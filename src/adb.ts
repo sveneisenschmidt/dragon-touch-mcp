@@ -120,6 +120,77 @@ export async function captureScreen(config: AdbConfig): Promise<string> {
   return data.toString("base64");
 }
 
+export async function getSystemSetting(
+  namespace: "system" | "secure" | "global",
+  key: string,
+  config: AdbConfig
+): Promise<string | null> {
+  try {
+    const { stdout } = await adbExec(`shell settings get ${namespace} ${key}`, config);
+    const val = stdout.trim();
+    return val === "null" || val === "" ? null : val;
+  } catch {
+    return null;
+  }
+}
+
+export async function setSystemSetting(
+  namespace: "system" | "secure" | "global",
+  key: string,
+  value: string,
+  config: AdbConfig
+): Promise<void> {
+  await adbExec(`shell settings put ${namespace} ${key} ${value}`, config);
+}
+
+export function parseSharedPrefsXml(xml: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const m of xml.matchAll(/<string name="([^"]+)">([^<]*)<\/string>/g)) {
+    result[m[1]] = m[2];
+  }
+  for (const m of xml.matchAll(/<(?:int|long|float) name="([^"]+)" value="([^"]+)"/g)) {
+    result[m[1]] = m[2];
+  }
+  for (const m of xml.matchAll(/<boolean name="([^"]+)" value="([^"]+)"/g)) {
+    result[m[1]] = m[2];
+  }
+  return result;
+}
+
+export async function readSharedPrefs(
+  packageName: string,
+  config: AdbConfig
+): Promise<Record<string, string>> {
+  try {
+    const prefsDir = `/data/data/${packageName}/shared_prefs`;
+    const { stdout: lsOut } = await adbExec(
+      `shell "run-as ${packageName} ls ${prefsDir}"`,
+      config
+    );
+    const files = lsOut
+      .trim()
+      .split(/\s+/)
+      .filter((f) => f.endsWith(".xml"));
+    const merged: Record<string, string> = {};
+    await Promise.all(
+      files.map(async (file) => {
+        try {
+          const { stdout } = await adbExec(
+            `shell "run-as ${packageName} cat ${prefsDir}/${file}"`,
+            config
+          );
+          Object.assign(merged, parseSharedPrefsXml(stdout));
+        } catch {
+          // skip unreadable files
+        }
+      })
+    );
+    return merged;
+  } catch {
+    return {};
+  }
+}
+
 export function findElementCenter(
   xml: string,
   resourceId: string
