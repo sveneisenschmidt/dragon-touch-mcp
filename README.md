@@ -11,7 +11,6 @@ Developed on the 27" TM27 model — should work on other Dragon Touch sizes (21"
 - Node.js 18+
 - `adb` in PATH — `brew install android-platform-tools`
 - Tablet on the same Wi-Fi network with ADB over network enabled
-- `com.fujia.calendar` installed on the tablet
 
 ## Setup
 
