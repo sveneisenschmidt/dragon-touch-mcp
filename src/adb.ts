@@ -143,7 +143,7 @@ export async function setSystemSetting(
   await adbExec(`shell settings put ${namespace} ${key} ${value}`, config);
 }
 
-function parseSharedPrefsXml(xml: string): Record<string, string> {
+export function parseSharedPrefsXml(xml: string): Record<string, string> {
   const result: Record<string, string> = {};
   for (const m of xml.matchAll(/<string name="([^"]+)">([^<]*)<\/string>/g)) {
     result[m[1]] = m[2];

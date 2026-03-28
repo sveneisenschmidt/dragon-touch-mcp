@@ -16,7 +16,7 @@ const SENSITIVE_KEY_PATTERNS = [
   /sign/i,
 ];
 
-function isSensitive(key: string): boolean {
+export function isSensitive(key: string): boolean {
   return SENSITIVE_KEY_PATTERNS.some((p) => p.test(key));
 }
 
