@@ -1,6 +1,6 @@
 # dragon-touch-mcp
 
-Control a Dragon Touch Android tablet from Claude over ADB via Wi-Fi.
+Control a Dragon Touch Android tablet from Claude over ADB via network.
 
 Developed on the 27" TM27 model — should work on other Dragon Touch sizes (21", 32", etc.) since tab switching is based on Android resource IDs, not hardcoded coordinates.
 
@@ -10,14 +10,7 @@ Developed on the 27" TM27 model — should work on other Dragon Touch sizes (21"
 
 - Node.js 18+
 - `adb` in PATH — [Android SDK Platform Tools](https://developer.android.com/tools/releases/platform-tools) (macOS: `brew install android-platform-tools`)
-- Tablet on the same Wi-Fi network with ADB over network enabled
-
-## Setup
-
-```bash
-npm install
-npm run build
-```
+- Tablet reachable over the network with ADB enabled (`adb tcpip 5555`)
 
 ## Add to Claude Desktop
 
@@ -30,20 +23,14 @@ Config file location:
 {
   "mcpServers": {
     "dragon-touch": {
-      "command": "node",
-      "args": ["/path/to/dragon-touch-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["dragon-touch-mcp"],
       "env": {
         "DRAGON_TOUCH_IP": "192.168.178.132"
       }
     }
   }
 }
-```
-
-Or pass the IP directly:
-
-```bash
-node dist/index.js --ip 192.168.178.132
 ```
 
 | Variable | Default | Description |
@@ -74,15 +61,15 @@ Every tool is also available as a CLI command — useful for scripting and autom
 
 ```bash
 # No payload needed
-DRAGON_TOUCH_IP=192.168.178.132 npm run cli -- show_calendar
-DRAGON_TOUCH_IP=192.168.178.132 npm run cli -- get_status
+DRAGON_TOUCH_IP=192.168.178.132 npx dragon-touch-mcp show_calendar
+DRAGON_TOUCH_IP=192.168.178.132 npx dragon-touch-mcp get_status
 
 # With --ip flag
-npm run cli -- --ip 192.168.178.132 show_tasks
+npx dragon-touch-mcp --ip 192.168.178.132 show_tasks
 
 # capture_screen saves a PNG file (default: ./dragon-touch-capture.png)
-DRAGON_TOUCH_IP=192.168.178.132 npm run cli -- capture_screen
-DRAGON_TOUCH_IP=192.168.178.132 npm run cli -- capture_screen '{"output": "/tmp/shot.png"}'
+DRAGON_TOUCH_IP=192.168.178.132 npx dragon-touch-mcp capture_screen
+DRAGON_TOUCH_IP=192.168.178.132 npx dragon-touch-mcp capture_screen '{"output": "/tmp/shot.png"}'
 ```
 
 All commands output JSON to stdout and errors to stderr. Exit code `0` on success, `1` on error.
@@ -90,6 +77,9 @@ All commands output JSON to stdout and errors to stderr. Exit code `0` on succes
 ## Development
 
 ```bash
+git clone https://github.com/sveneisenschmidt/dragon-touch-mcp.git
+cd dragon-touch-mcp
+npm install
 npm run build       # compile TypeScript
 npm test            # run unit tests
 npm run inspect     # MCP Inspector at http://localhost:5173
