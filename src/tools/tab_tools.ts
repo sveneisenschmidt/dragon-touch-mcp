@@ -1,38 +1,30 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
 import { AdbConfig } from "../adb.js";
 import { TabName, switchTab } from "../tablet.js";
+import type { CliCommand } from "../cli.js";
 
-function registerTabTool(
-  server: McpServer,
-  config: AdbConfig,
-  toolName: string,
-  description: string,
-  tab: TabName
-): void {
-  server.tool(toolName, description, {}, async () => {
+const TAB_DEFS: { toolName: string; description: string; tab: TabName }[] = [
+  { toolName: "show_calendar", description: "Switch the Dragon Touch tablet to the Calendar tab", tab: "calendar" },
+  { toolName: "show_tasks",    description: "Switch the Dragon Touch tablet to the Tasks tab",    tab: "tasks"    },
+  { toolName: "show_day",      description: "Switch the Dragon Touch tablet to the Day tab",      tab: "day"      },
+  { toolName: "show_meals",    description: "Switch the Dragon Touch tablet to the Meals tab",    tab: "meals"    },
+  { toolName: "show_photos",   description: "Switch the Dragon Touch tablet to the Photos tab",   tab: "photos"   },
+  { toolName: "show_lists",    description: "Switch the Dragon Touch tablet to the Lists tab",    tab: "lists"    },
+  { toolName: "show_sleep",    description: "Switch the Dragon Touch tablet to the Sleep tab",    tab: "sleep"    },
+  { toolName: "show_goal",     description: "Switch the Dragon Touch tablet to the Goal tab",     tab: "goal"     },
+];
+
+const tabSchema = z.object({});
+
+export const tabCliCommands: CliCommand[] = TAB_DEFS.map(({ toolName, description, tab }) => ({
+  name: toolName,
+  description,
+  schema: tabSchema,
+  run: async (_args: unknown, config: AdbConfig) => {
     const result = await switchTab(tab, config);
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(
-            result.success
-              ? { success: true, tab, trace: result.trace }
-              : { success: false, error: result.error, trace: result.trace }
-          ),
-        },
-      ],
-    };
-  });
-}
+    return result.success
+      ? { success: true, tab, trace: result.trace }
+      : { success: false, error: result.error, trace: result.trace };
+  },
+}));
 
-export function registerTabTools(server: McpServer, config: AdbConfig): void {
-  registerTabTool(server, config, "show_calendar", "Switch the Dragon Touch tablet to the Calendar tab", "calendar");
-  registerTabTool(server, config, "show_tasks",    "Switch the Dragon Touch tablet to the Tasks tab",    "tasks");
-  registerTabTool(server, config, "show_day",      "Switch the Dragon Touch tablet to the Day tab",      "day");
-  registerTabTool(server, config, "show_meals",    "Switch the Dragon Touch tablet to the Meals tab",    "meals");
-  registerTabTool(server, config, "show_photos",   "Switch the Dragon Touch tablet to the Photos tab",   "photos");
-  registerTabTool(server, config, "show_lists",    "Switch the Dragon Touch tablet to the Lists tab",    "lists");
-  registerTabTool(server, config, "show_sleep",    "Switch the Dragon Touch tablet to the Sleep tab",    "sleep");
-  registerTabTool(server, config, "show_goal",     "Switch the Dragon Touch tablet to the Goal tab",     "goal");
-}

@@ -1,49 +1,38 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { writeFile } from "node:fs/promises";
 import { AdbConfig, captureScreen, ensureConnected } from "../adb.js";
 import { Trace } from "../trace.js";
+import type { CliCommand } from "../cli.js";
 
-export function registerCaptureScreen(server: McpServer, config: AdbConfig): void {
-  server.tool(
-    "capture_screen",
-    "Take a screenshot of the Dragon Touch tablet and return it as an image",
-    {},
-    async () => {
-      const trace = new Trace();
+const captureSchema = z.object({
+  output: z.string().optional().describe("File path to save the PNG (default: ./dragon-touch-capture.png)"),
+});
 
-      const connected = await ensureConnected(config);
-      trace.mark("ensure_connected");
+export const captureScreenCliCommand: CliCommand = {
+  name: "capture_screen",
+  description: "Take a screenshot and save to a local PNG file",
+  schema: captureSchema,
+  run: async (args: unknown, config: AdbConfig) => {
+    const { output = "./dragon-touch-capture.png" } = args as z.infer<typeof captureSchema>;
+    const trace = new Trace();
 
-      if (!connected) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify({
-                success: false,
-                error: `Cannot reach device at ${config.ip}:${config.port}`,
-                trace: trace.toJSON(),
-              }),
-            },
-          ],
-        };
-      }
+    const connected = await ensureConnected(config);
+    trace.mark("ensure_connected");
 
-      const base64 = await captureScreen(config);
-      trace.mark("capture");
-
+    if (!connected) {
       return {
-        content: [
-          {
-            type: "image",
-            data: base64,
-            mimeType: "image/png",
-          },
-          {
-            type: "text",
-            text: JSON.stringify({ trace: trace.toJSON() }),
-          },
-        ],
+        success: false,
+        error: `Cannot reach device at ${config.ip}:${config.port}`,
+        trace: trace.toJSON(),
       };
     }
-  );
-}
+
+    const base64 = await captureScreen(config);
+    trace.mark("capture");
+
+    await writeFile(output, Buffer.from(base64, "base64"));
+    trace.mark("write_file");
+
+    return { success: true, path: output, trace: trace.toJSON() };
+  },
+};

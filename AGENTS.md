@@ -12,8 +12,10 @@ Context and conventions for AI coding agents working in this repository.
 
 ```
 src/
-├── index.ts          Entry point. Parses config, runs fail-fast startup checks,
-│                     registers all tools, starts the MCP stdio server.
+├── index.ts          Entry point. Detects CLI vs MCP mode, parses config,
+│                     runs fail-fast startup checks (MCP only), starts server.
+├── cli.ts            CLI dispatcher. CliCommand interface, parseCliCommand(),
+│                     runCli() — validates JSON payload via Zod, prints JSON to stdout.
 ├── adb.ts            Low-level ADB abstraction. All exec() calls go here.
 │                     Functions: checkAdbAvailable, connectDevice, getDeviceState,
 │                     ensureConnected, isPackageInstalled, wakeScreen, tap,
@@ -28,9 +30,9 @@ src/
 │   ├── trace.test.ts   Unit tests for Trace class
 │   └── tablet.test.ts  Unit tests for formatCheckup
 └── tools/
-    ├── get_status.ts     MCP tool: runs checkup, returns structured JSON
-    ├── tab_tools.ts      Registers all 8 tab-switch tools via a shared factory
-    └── capture_screen.ts MCP tool: screenshots the tablet screen, returns base64 PNG
+    ├── get_status.ts     MCP tool + CLI command: runs checkup, returns structured JSON
+    ├── tab_tools.ts      MCP tools + CLI commands: all 8 tab-switch tools via shared TAB_DEFS
+    └── capture_screen.ts MCP tool + CLI command: screenshot; CLI saves PNG to file
 ```
 
 ## Dev Workflow
@@ -78,12 +80,13 @@ This approach is rotation-safe and language-independent.
 ### Adding a New Tool
 
 1. Find the resource ID of the target UI element via `adb shell uiautomator dump`
-2. Add the resource ID to `TAB_RESOURCE_IDS` in `tablet.ts` (if it's a tab) or use `findElementCenter` directly
-3. Create `src/tools/<tool_name>.ts` following the pattern of existing tools:
-   - Export a single `register<ToolName>(server, config)` function
-   - Call `server.tool(name, description, schema, handler)`
-   - Return `{ content: [{ type: "text", text: JSON.stringify(result) }] }`
-4. Import and call the register function in `src/index.ts`
+2. Create `src/tools/<tool_name>.ts` with two exports:
+   - `register<ToolName>(server, config)` — MCP registration, calls `server.tool(name, description, zodSchema, handler)`
+   - `<toolName>CliCommand: CliCommand` — CLI entry with the same Zod schema and a `run()` function that returns plain JSON
+3. Import and wire both in `src/index.ts`:
+   - Call `register<ToolName>(server, config)` in the MCP block
+   - Add `<toolName>CliCommand` to the `allCommands` array in the CLI block
+4. CLI output must always be a plain JSON-serialisable value (no MCP content envelope)
 
 ## Known Constraints
 

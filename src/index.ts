@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { AdbConfig } from "./adb.js";
+import { AdbConfig, captureScreen, ensureConnected } from "./adb.js";
 import { CheckResult, formatCheckup, runCheckup, warmCache } from "./tablet.js";
-import { registerTabTools } from "./tools/tab_tools.js";
-import { registerGetStatus } from "./tools/get_status.js";
-import { registerCaptureScreen } from "./tools/capture_screen.js";
+import { Trace } from "./trace.js";
+import { tabCliCommands } from "./tools/tab_tools.js";
+import { getStatusCliCommand } from "./tools/get_status.js";
+import { captureScreenCliCommand } from "./tools/capture_screen.js";
+import { parseCliCommand, runCli } from "./cli.js";
 
 // ─── Config from env / CLI args ──────────────────────────────────────────────
 
@@ -62,26 +64,77 @@ async function validateSetup(config: AdbConfig): Promise<CheckResult> {
   return checkup;
 }
 
+// ─── MCP server registration ─────────────────────────────────────────────────
+
+function registerMcpTools(server: McpServer, config: AdbConfig): void {
+  // Tab tools and get_status: wrap CLI run() in a text content response
+  for (const cmd of [...tabCliCommands, getStatusCliCommand]) {
+    server.tool(cmd.name, cmd.description, {}, async () => {
+      const result = await cmd.run({}, config);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    });
+  }
+
+  // capture_screen returns an image content type — registered separately
+  server.tool(
+    captureScreenCliCommand.name,
+    "Take a screenshot of the Dragon Touch tablet and return it as an image",
+    {},
+    async () => {
+      const trace = new Trace();
+      const connected = await ensureConnected(config);
+      trace.mark("ensure_connected");
+      if (!connected) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: false,
+                error: `Cannot reach device at ${config.ip}:${config.port}`,
+                trace: trace.toJSON(),
+              }),
+            },
+          ],
+        };
+      }
+      const base64 = await captureScreen(config);
+      trace.mark("capture");
+      return {
+        content: [
+          { type: "image", data: base64, mimeType: "image/png" },
+          { type: "text", text: JSON.stringify({ trace: trace.toJSON() }) },
+        ],
+      };
+    }
+  );
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
   const config = parseConfig();
+  const { command, payload } = parseCliCommand();
 
+  if (command !== undefined) {
+    const allCommands = [...tabCliCommands, captureScreenCliCommand, getStatusCliCommand];
+    await runCli(allCommands, command, payload, config);
+    return;
+  }
+
+  // MCP server mode
   const checkup = await validateSetup(config);
   process.stderr.write(formatCheckup(checkup) + "\n\n");
 
   // Pre-load orientation so first switchTab call skips the getOrientation round-trip
   await warmCache(config);
 
-  // Start MCP server
   const server = new McpServer({
     name: "dragon-touch-mcp",
     version: "0.1.0",
   });
 
-  registerGetStatus(server, config);
-  registerTabTools(server, config);
-  registerCaptureScreen(server, config);
+  registerMcpTools(server, config);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

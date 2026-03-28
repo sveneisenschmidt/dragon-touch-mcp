@@ -1,22 +1,11 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
 import { AdbConfig } from "../adb.js";
 import { runCheckup } from "../tablet.js";
+import type { CliCommand } from "../cli.js";
 
-export function registerGetStatus(server: McpServer, config: AdbConfig): void {
-  server.tool(
-    "get_status",
-    "Run a full setup checkup: verifies adb, device connectivity, and app installation",
-    {},
-    async () => {
-      const result = await runCheckup(config);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      };
-    }
-  );
-}
+export const getStatusCliCommand: CliCommand = {
+  name: "get_status",
+  description: "Check adb, device connectivity, and app installation",
+  schema: z.object({}),
+  run: async (_args: unknown, config: AdbConfig) => runCheckup(config),
+};

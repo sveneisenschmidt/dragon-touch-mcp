@@ -66,6 +66,25 @@ node dist/index.js --ip 192.168.178.132
 
 Tab switching uses Android resource IDs — works regardless of screen rotation or app language.
 
+## CLI Usage
+
+Every tool is also available as a CLI command — useful for scripting and automation without an MCP client.
+
+```bash
+# No payload needed
+DRAGON_TOUCH_IP=192.168.178.132 npm run cli -- show_calendar
+DRAGON_TOUCH_IP=192.168.178.132 npm run cli -- get_status
+
+# With --ip flag
+npm run cli -- --ip 192.168.178.132 show_tasks
+
+# capture_screen saves a PNG file (default: ./dragon-touch-capture.png)
+DRAGON_TOUCH_IP=192.168.178.132 npm run cli -- capture_screen
+DRAGON_TOUCH_IP=192.168.178.132 npm run cli -- capture_screen '{"output": "/tmp/shot.png"}'
+```
+
+All commands output JSON to stdout and errors to stderr. Exit code `0` on success, `1` on error.
+
 ## Development
 
 ```bash
