@@ -1,0 +1,44 @@
+{
+  "name": "dragon-touch-mcp",
+  "version": "0.1.0",
+  "description": "MCP server to control a Dragon Touch Android tablet over ADB via Wi-Fi",
+  "type": "module",
+  "bin": {
+    "dragon-touch-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc && shx chmod +x dist/index.js",
+    "prepare": "npm run build",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sveneisenschmidt/dragon-touch-mcp.git"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.28.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "shx": "^0.3.4",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "mcp",
+    "android",
+    "adb",
+    "dragon-touch",
+    "tablet",
+    "automation"
+  ],
+  "license": "MIT"
+}
