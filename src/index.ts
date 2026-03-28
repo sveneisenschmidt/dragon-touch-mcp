@@ -7,6 +7,10 @@ import { Trace } from "./trace.js";
 import { tabCliCommands } from "./tools/tab_tools.js";
 import { getStatusCliCommand } from "./tools/get_status.js";
 import { captureScreenCliCommand } from "./tools/capture_screen.js";
+import { getDeviceInfoCliCommand } from "./tools/get_device_info.js";
+import { getAppSettingsCliCommand } from "./tools/get_app_settings.js";
+import { setBrightnessCliCommand } from "./tools/set_brightness.js";
+import { setVolumeCliCommand } from "./tools/set_volume.js";
 import { parseCliCommand, runCli } from "./cli.js";
 
 // ─── Config from env / CLI args ──────────────────────────────────────────────
@@ -67,8 +71,15 @@ async function validateSetup(config: AdbConfig): Promise<CheckResult> {
 // ─── MCP server registration ─────────────────────────────────────────────────
 
 function registerMcpTools(server: McpServer, config: AdbConfig): void {
-  // Tab tools and get_status: wrap CLI run() in a text content response
-  for (const cmd of [...tabCliCommands, getStatusCliCommand]) {
+  // Tab tools, get_status, get_device_info, get_app_settings, set_brightness, set_volume
+  for (const cmd of [
+    ...tabCliCommands,
+    getStatusCliCommand,
+    getDeviceInfoCliCommand,
+    getAppSettingsCliCommand,
+    setBrightnessCliCommand,
+    setVolumeCliCommand,
+  ]) {
     server.tool(cmd.name, cmd.description, {}, async () => {
       const result = await cmd.run({}, config);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
@@ -117,7 +128,15 @@ async function main(): Promise<void> {
   const { command, payload } = parseCliCommand();
 
   if (command !== undefined) {
-    const allCommands = [...tabCliCommands, captureScreenCliCommand, getStatusCliCommand];
+    const allCommands = [
+    ...tabCliCommands,
+    captureScreenCliCommand,
+    getStatusCliCommand,
+    getDeviceInfoCliCommand,
+    getAppSettingsCliCommand,
+    setBrightnessCliCommand,
+    setVolumeCliCommand,
+  ];
     await runCli(allCommands, command, payload, config);
     return;
   }
