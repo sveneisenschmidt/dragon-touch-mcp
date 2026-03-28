@@ -13,11 +13,17 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "cli": "node dist/index.js",
-    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js"
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
+    "clean": "shx rm -rf dist"
   },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/sveneisenschmidt/dragon-touch-mcp.git"
+    "url": "git+https://github.com/sveneisenschmidt/dragon-touch-mcp.git"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.28.0",
