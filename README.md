@@ -9,19 +9,22 @@ Developed on the 27" TM27 model — should work on other Dragon Touch sizes (21"
 ## Requirements
 
 - Node.js 18+
-- `adb` in PATH — `brew install android-platform-tools`
+- `adb` in PATH — [Android SDK Platform Tools](https://developer.android.com/tools/releases/platform-tools) (macOS: `brew install android-platform-tools`)
 - Tablet on the same Wi-Fi network with ADB over network enabled
 
 ## Setup
 
 ```bash
 npm install
-make build
+npm run build
 ```
 
 ## Add to Claude Desktop
 
-`~/Library/Application Support/Claude/claude_desktop_config.json`:
+Config file location:
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
 
 ```json
 {
@@ -87,16 +90,13 @@ All commands output JSON to stdout and errors to stderr. Exit code `0` on succes
 ## Development
 
 ```bash
-make build      # compile TypeScript
-make test       # smoke tests
-make inspect    # MCP Inspector at http://localhost:5173
-make dev        # watch mode
-make clean      # delete dist/
+npm run build       # compile TypeScript
+npm test            # run unit tests
+npm run inspect     # MCP Inspector at http://localhost:5173
+npm run dev         # watch mode
 ```
 
-```bash
-make test DRAGON_TOUCH_IP=192.168.1.50   # override IP
-```
+On macOS/Linux a `Makefile` is also available with the same targets plus `make clean`.
 
 ## Contributing
 
