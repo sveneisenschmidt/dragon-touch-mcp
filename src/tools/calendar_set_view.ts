@@ -50,12 +50,16 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
         return { success: false, error: "Cannot find date header to open view switcher", state };
       }
       await tap(tvWeek.center.x, tvWeek.center.y, config);
-      await new Promise((r) => setTimeout(r, 1000));
     }
 
-    // Second dump: find fl_type in current view
-    const xml2 = await dumpUiXml(config);
-    const nodes2 = parseNodes(xml2);
+    // Second dump: find fl_type — poll to handle day-view transition animation.
+    let nodes2 = nodes;
+    const deadline2 = Date.now() + 3000;
+    while (Date.now() < deadline2) {
+      await new Promise((r) => setTimeout(r, 300));
+      nodes2 = parseNodes(await dumpUiXml(config));
+      if (findNode(nodes2, "fl_type")) break;
+    }
     const flType = findNode(nodes2, "fl_type");
     if (!flType) {
       return { success: false, error: "View type selector (fl_type) not found", state };

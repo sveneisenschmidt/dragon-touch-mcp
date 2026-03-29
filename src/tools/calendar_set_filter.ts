@@ -48,9 +48,13 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
         return { success: false, error: "Cannot access filter from day view — switch to week or month view first", state };
       }
       await tap(tvWeek.center.x, tvWeek.center.y, config);
-      await new Promise((r) => setTimeout(r, 1000));
-      const xml2 = await dumpUiXml(config);
-      workingNodes = parseNodes(xml2);
+      // Poll until fl_filter is visible after day-view transition
+      const deadlineDay = Date.now() + 3000;
+      while (Date.now() < deadlineDay) {
+        await new Promise((r) => setTimeout(r, 300));
+        workingNodes = parseNodes(await dumpUiXml(config));
+        if (findNode(workingNodes, "fl_filter")) break;
+      }
     }
 
     const flFilter = findNode(workingNodes, "fl_filter");
@@ -58,13 +62,15 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
       return { success: false, error: "Filter button (fl_filter) not found", state };
     }
 
-    // Open filter panel
+    // Open filter panel, then poll until profile nodes appear
     await tap(flFilter.center.x, flFilter.center.y, config);
-    await new Promise((r) => setTimeout(r, 1000));
-
-    // Second dump: read filter panel content
-    const xml3 = await dumpUiXml(config);
-    const filterNodes = parseNodes(xml3);
+    let filterNodes = parseNodes(await dumpUiXml(config));
+    const deadlineFilter = Date.now() + 3000;
+    while (Date.now() < deadlineFilter) {
+      await new Promise((r) => setTimeout(r, 300));
+      filterNodes = parseNodes(await dumpUiXml(config));
+      if (findNodes(filterNodes, "tv_category_name").length > 0) break;
+    }
 
     const profileNameNodes = findNodes(filterNodes, "tv_category_name")
       .sort((a, b) => a.bounds.y1 - b.bounds.y1);
