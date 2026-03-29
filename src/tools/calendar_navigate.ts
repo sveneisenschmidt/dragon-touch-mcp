@@ -31,18 +31,23 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
       };
     }
 
+    let calendarNodes = nodes;
+    let calendarView = state.view;
     let warning: string | undefined;
     if (state.tab !== "calendar") {
       await switchTab("calendar", config);
+      const xml2 = await dumpUiXml(config);
+      calendarNodes = parseNodes(xml2);
+      calendarView = extractState(calendarNodes).view;
       warning = "Switched to calendar tab";
     }
 
     // Day view uses lv_left/iv_right; week/month/schedule use iv_left/iv_right
-    const leftId = state.view === "day" ? "lv_left" : "iv_left";
+    const leftId = calendarView === "day" ? "lv_left" : "iv_left";
     const rightId = "iv_right";
     const targetId = direction === "prev" ? leftId : rightId;
 
-    const arrowNode = findNode(nodes, targetId);
+    const arrowNode = findNode(calendarNodes, targetId);
     if (!arrowNode) {
       return { success: false, error: `Navigation arrow "${targetId}" not found`, state };
     }
@@ -54,7 +59,7 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
 
     return {
       success: true,
-      state: { tab: "calendar", view: state.view },
+      state: { tab: "calendar", view: calendarView },
       direction,
       steps,
       ...(warning ? { warning } : {}),

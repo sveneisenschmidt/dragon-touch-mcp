@@ -30,19 +30,24 @@ async function run(_args: unknown, config: AdbConfig): Promise<unknown> {
       };
     }
 
+    let calendarNodes = nodes;
+    let calendarView = state.view;
     let warning: string | undefined;
     if (state.tab !== "calendar") {
       await switchTab("calendar", config);
+      const xml2 = await dumpUiXml(config);
+      calendarNodes = parseNodes(xml2);
+      calendarView = extractState(calendarNodes).view;
       warning = "Switched to calendar tab";
     }
 
-    const periodNode = findNode(nodes, "tv_range") ?? findNode(nodes, "tv_week");
+    const periodNode = findNode(calendarNodes, "tv_range") ?? findNode(calendarNodes, "tv_week");
     const period = periodNode?.text ?? "";
-    const events = parseCalendarEvents(nodes, state.view);
+    const events = parseCalendarEvents(calendarNodes, calendarView);
 
     return {
       success: true,
-      state: { tab: "calendar", view: state.view },
+      state: { tab: "calendar", view: calendarView },
       period,
       events,
       ...(warning ? { warning } : {}),
