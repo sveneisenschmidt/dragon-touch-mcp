@@ -1,3 +1,4 @@
+import { XMLParser } from "fast-xml-parser";
 import { AdbConfig, tap } from "../adb.js";
 import type { TabName } from "../tablet.js";
 
@@ -33,33 +34,60 @@ export interface CalendarEvent {
 
 // ─── XML Parsing ─────────────────────────────────────────────────────────────
 
-export function parseNodes(xml: string): UiNode[] {
-  const nodes: UiNode[] = [];
-  const chunks = xml.split("<node ").slice(1);
-  for (const chunk of chunks) {
-    const end = chunk.indexOf(">");
-    if (end === -1) continue;
-    const attr = chunk.substring(0, end).replace(/\/$/, "");
-    const get = (k: string): string =>
-      (attr.match(new RegExp(k + '="([^"]*)"')) ?? [])[1] ?? "";
-    const b = attr.match(/bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/);
-    if (!b) continue;
-    const x1 = +b[1], y1 = +b[2], x2 = +b[3], y2 = +b[4];
-    const resourceId = get("resource-id");
-    nodes.push({
-      resourceId,
-      shortId: resourceId.replace(/^[^/]+\//, ""),
-      text: get("text"),
-      contentDesc: get("content-desc"),
-      className: get("class"),
-      checked: get("checked") === "true",
-      clickable: get("clickable") === "true",
-      checkable: get("checkable") === "true",
-      bounds: { x1, y1, x2, y2 },
-      center: { x: Math.floor((x1 + x2) / 2), y: Math.floor((y1 + y2) / 2) },
-    });
+type RawNode = {
+  "resource-id"?: string;
+  text?: string;
+  "content-desc"?: string;
+  class?: string;
+  checked?: string;
+  clickable?: string;
+  checkable?: string;
+  bounds?: string;
+  node?: RawNode | RawNode[];
+};
+
+const xmlParser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: "",
+  isArray: (_name, _jpath, _isLeaf, isAttribute) => !isAttribute,
+  parseAttributeValue: false,
+});
+
+function flattenRawNodes(raw: RawNode[]): UiNode[] {
+  const result: UiNode[] = [];
+  for (const r of raw) {
+    const b = (r.bounds ?? "").match(/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/);
+    if (b) {
+      const x1 = +b[1], y1 = +b[2], x2 = +b[3], y2 = +b[4];
+      const resourceId = r["resource-id"] ?? "";
+      result.push({
+        resourceId,
+        shortId: resourceId.replace(/^[^/]+\//, ""),
+        text: r.text ?? "",
+        contentDesc: r["content-desc"] ?? "",
+        className: r.class ?? "",
+        checked: r.checked === "true",
+        clickable: r.clickable === "true",
+        checkable: r.checkable === "true",
+        bounds: { x1, y1, x2, y2 },
+        center: { x: Math.floor((x1 + x2) / 2), y: Math.floor((y1 + y2) / 2) },
+      });
+    }
+    if (r.node) {
+      result.push(...flattenRawNodes(Array.isArray(r.node) ? r.node : [r.node]));
+    }
   }
-  return nodes;
+  return result;
+}
+
+export function parseNodes(xml: string): UiNode[] {
+  try {
+    const doc = xmlParser.parse(xml);
+    const topNodes: RawNode[] = doc?.hierarchy?.[0]?.node ?? [];
+    return flattenRawNodes(Array.isArray(topNodes) ? topNodes : [topNodes]);
+  } catch {
+    return [];
+  }
 }
 
 export function findNode(nodes: UiNode[], shortId: string): UiNode | null {

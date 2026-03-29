@@ -93,6 +93,23 @@ describe("parseNodes", () => {
     const nodes = parseNodes(xml);
     expect(nodes[0].shortId).toBe("");
   });
+
+  it("handles XML-encoded special characters in text (e.g. & and quotes)", () => {
+    const xml = `<hierarchy><node resource-id="com.fujia.calendar:id/tv_event_name" text="Mama &amp; Papa" bounds="[0,0][100,100]" /></hierarchy>`;
+    const nodes = parseNodes(xml);
+    expect(nodes[0].text).toBe("Mama & Papa");
+  });
+
+  it("handles nested nodes (returns all descendants flat)", () => {
+    const xml = `<hierarchy>
+      <node resource-id="com.fujia.calendar:id/outer" bounds="[0,0][200,200]">
+        <node resource-id="com.fujia.calendar:id/inner" bounds="[10,10][100,100]" />
+      </node>
+    </hierarchy>`;
+    const nodes = parseNodes(xml);
+    expect(nodes).toHaveLength(2);
+    expect(nodes.map((n) => n.shortId)).toEqual(["outer", "inner"]);
+  });
 });
 
 // ─── findNode / findNodes ─────────────────────────────────────────────────────

@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.28.0",
+    "fast-xml-parser": "^5.5.9",
     "zod": "^3.23.8"
   },
   "devDependencies": {
