@@ -1,6 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import { AdbConfig, tap } from "../adb.js";
-import type { TabName } from "../tablet.js";
+import { TAB_RESOURCE_IDS, type TabName } from "../tablet.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -100,16 +100,13 @@ export function findNodes(nodes: UiNode[], shortId: string): UiNode[] {
 
 // ─── State Detection ─────────────────────────────────────────────────────────
 
-const TAB_MAP: Record<string, TabName> = {
-  rb_calendar1: "calendar",
-  rb_chores1: "tasks",
-  rb_reward1: "day",
-  rb_meals1: "meals",
-  rb_photos1: "photos",
-  rb_lists1: "lists",
-  rb_steep1: "sleep",
-  rb_settings1: "goal",
-};
+// Inverted index: shortId → TabName, derived from the canonical TAB_RESOURCE_IDS map.
+export const TAB_MAP: Record<string, TabName> = Object.fromEntries(
+  Object.entries(TAB_RESOURCE_IDS).map(([tab, resourceId]) => [
+    resourceId.replace(/^[^/]+\//, ""),
+    tab as TabName,
+  ])
+);
 
 export function detectView(nodes: UiNode[]): CalendarView {
   if (nodes.some((n) => n.shortId === "rl_month_view")) return "month";
