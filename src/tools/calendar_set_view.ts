@@ -61,26 +61,33 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
       return { success: false, error: "View type selector (fl_type) not found", state };
     }
 
-    // Open the dropdown
+    // Open the dropdown, then poll until the items appear (up to 3 s).
+    // A fixed delay is unreliable — the dropdown may not be rendered yet when
+    // we dump, yielding background nodes without checked state.
     await tap(flType.center.x, flType.center.y, config);
-    await new Promise((r) => setTimeout(r, 800));
-
-    // Third dump: read dropdown items sorted top-to-bottom
-    const xml3 = await dumpUiXml(config);
-    const nodes3 = parseNodes(xml3);
-    const sortedItems = findNodes(nodes3, "title").sort((a, b) => a.bounds.y1 - b.bounds.y1);
-
-    // The currently active view's item carries checked=true.
-    // Cross-check its position against DROPDOWN_ORDER using the view we detected
-    // before opening the dropdown. If they disagree, the app layout has changed and
-    // we refuse to guess rather than silently tapping the wrong item.
-    const checkedIndex = sortedItems.findIndex((n) => n.checked);
-    if (checkedIndex === -1) {
-      return { success: false, error: "Active view not identifiable in dropdown (no checked item)", state };
+    let sortedItems: ReturnType<typeof findNodes> = [];
+    const deadline = Date.now() + 3000;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 300));
+      const xmlPoll = await dumpUiXml(config);
+      const nodesPoll = parseNodes(xmlPoll);
+      const items = findNodes(nodesPoll, "title").sort((a, b) => a.bounds.y1 - b.bounds.y1);
+      if (items.length >= DROPDOWN_ORDER.length) {
+        sortedItems = items;
+        break;
+      }
     }
+    if (sortedItems.length < DROPDOWN_ORDER.length) {
+      return { success: false, error: "View type dropdown did not open", state };
+    }
+
+    // If the app exposes a checked item, use it to verify DROPDOWN_ORDER hasn't
+    // changed. If checked state is absent (app doesn't always set it), skip the
+    // order check and proceed with positional matching — don't fail hard.
+    const checkedIndex = sortedItems.findIndex((n) => n.checked);
     const currentView = state.view === "day" ? "day" : (state.view as CalendarView);
     const expectedCheckedIndex = DROPDOWN_ORDER.indexOf(currentView);
-    if (expectedCheckedIndex !== -1 && checkedIndex !== expectedCheckedIndex) {
+    if (checkedIndex !== -1 && expectedCheckedIndex !== -1 && checkedIndex !== expectedCheckedIndex) {
       return {
         success: false,
         error: `Dropdown order mismatch — expected "${currentView}" at position ${expectedCheckedIndex}, checked item is at position ${checkedIndex}. App layout may have changed.`,
