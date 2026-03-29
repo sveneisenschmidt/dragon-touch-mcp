@@ -2,6 +2,7 @@ import { z } from "zod";
 import { AdbConfig, dumpUiXml, ensureConnected, wakeScreen, tap, adbExec } from "../adb.js";
 import { switchTab } from "../tablet.js";
 import type { CliCommand } from "../cli.js";
+import { Trace } from "../trace.js";
 import { parseNodes, extractState, isCalendarDirty, findNode, findNodes } from "./calendar_helpers.js";
 
 export const setFilterSchema = z.object({
@@ -11,12 +12,14 @@ export const setFilterSchema = z.object({
 });
 
 async function run(args: unknown, config: AdbConfig): Promise<unknown> {
+  const trace = new Trace();
   try {
     const { profiles } = setFilterSchema.parse(args);
 
     const connected = await ensureConnected(config);
+    trace.mark("ensure_connected");
     if (!connected) {
-      return { success: false, error: `Cannot reach device at ${config.ip}:${config.port}` };
+      return { success: false, error: `Cannot reach device at ${config.ip}:${config.port}`, trace: trace.toJSON() };
     }
     await wakeScreen(config);
 
@@ -24,12 +27,14 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
     const xml = await dumpUiXml(config);
     const nodes = parseNodes(xml);
     const state = extractState(nodes);
+    trace.mark("initial_dump");
 
     if (isCalendarDirty(nodes)) {
       return {
         success: false,
         error: "Unexpected screen state — close any open dialogs and try again",
         state,
+        trace: trace.toJSON(),
       };
     }
 
@@ -37,6 +42,7 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
     if (state.tab !== "calendar") {
       await switchTab("calendar", config);
       warning = "Switched to calendar tab";
+      trace.mark("switch_tab");
     }
 
     // Need to be in week/month view for fl_filter to be visible
@@ -45,7 +51,7 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
     if (state.view === "day") {
       const tvWeek = findNode(nodes, "tv_week");
       if (!tvWeek) {
-        return { success: false, error: "Cannot access filter from day view — switch to week or month view first", state };
+        return { success: false, error: "Cannot access filter from day view — switch to week or month view first", state, trace: trace.toJSON() };
       }
       await tap(tvWeek.center.x, tvWeek.center.y, config);
       // Poll until fl_filter is visible after day-view transition
@@ -55,11 +61,12 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
         workingNodes = parseNodes(await dumpUiXml(config));
         if (findNode(workingNodes, "fl_filter")) break;
       }
+      trace.mark("exit_day_view");
     }
 
     const flFilter = findNode(workingNodes, "fl_filter");
     if (!flFilter) {
-      return { success: false, error: "Filter button (fl_filter) not found", state };
+      return { success: false, error: "Filter button (fl_filter) not found", state, trace: trace.toJSON() };
     }
 
     // Open filter panel, then poll until profile nodes appear
@@ -71,6 +78,7 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
       filterNodes = parseNodes(await dumpUiXml(config));
       if (findNodes(filterNodes, "tv_category_name").length > 0) break;
     }
+    trace.mark("filter_open");
 
     const profileNameNodes = findNodes(filterNodes, "tv_category_name")
       .sort((a, b) => a.bounds.y1 - b.bounds.y1);
@@ -110,19 +118,21 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
       }
       if (shouldBeVisible) activeProfiles.push(name);
     }
-
+    trace.mark("toggles_applied");
 
     // Close filter panel
     await adbExec("shell input keyevent 4", config);
+    trace.mark("panel_closed");
 
     return {
       success: true,
       state: { tab: "calendar", view: state.view },
       active_profiles: activeProfiles,
       ...(warning ? { warning } : {}),
+      trace: trace.toJSON(),
     };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return { success: false, error: err instanceof Error ? err.message : String(err), trace: trace.toJSON() };
   }
 }
 

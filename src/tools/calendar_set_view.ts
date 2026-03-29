@@ -2,6 +2,7 @@ import { z } from "zod";
 import { AdbConfig, dumpUiXml, ensureConnected, wakeScreen, tap } from "../adb.js";
 import { switchTab } from "../tablet.js";
 import type { CliCommand } from "../cli.js";
+import { Trace } from "../trace.js";
 import { parseNodes, extractState, detectView, isCalendarDirty, findNode, findNodes, type CalendarView } from "./calendar_helpers.js";
 
 export const setViewSchema = z.object({
@@ -14,12 +15,14 @@ export const setViewSchema = z.object({
 const DROPDOWN_ORDER: CalendarView[] = ["schedule", "day", "week", "month"];
 
 async function run(args: unknown, config: AdbConfig): Promise<unknown> {
+  const trace = new Trace();
   try {
     const { view } = setViewSchema.parse(args);
 
     const connected = await ensureConnected(config);
+    trace.mark("ensure_connected");
     if (!connected) {
-      return { success: false, error: `Cannot reach device at ${config.ip}:${config.port}` };
+      return { success: false, error: `Cannot reach device at ${config.ip}:${config.port}`, trace: trace.toJSON() };
     }
     await wakeScreen(config);
 
@@ -27,12 +30,14 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
     const xml = await dumpUiXml(config);
     const nodes = parseNodes(xml);
     const state = extractState(nodes);
+    trace.mark("initial_dump");
 
     if (isCalendarDirty(nodes)) {
       return {
         success: false,
         error: "Unexpected screen state — close any open dialogs and try again",
         state,
+        trace: trace.toJSON(),
       };
     }
 
@@ -40,6 +45,7 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
     if (state.tab !== "calendar") {
       await switchTab("calendar", config);
       warning = "Switched to calendar tab";
+      trace.mark("switch_tab");
     }
 
     // Day view uses lv_left/iv_right and has no fl_type — need to enter week view first
@@ -47,7 +53,7 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
     if (state.view === "day") {
       const tvWeek = findNode(nodes, "tv_week");
       if (!tvWeek) {
-        return { success: false, error: "Cannot find date header to open view switcher", state };
+        return { success: false, error: "Cannot find date header to open view switcher", state, trace: trace.toJSON() };
       }
       await tap(tvWeek.center.x, tvWeek.center.y, config);
     }
@@ -62,8 +68,9 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
     }
     const flType = findNode(nodes2, "fl_type");
     if (!flType) {
-      return { success: false, error: "View type selector (fl_type) not found", state };
+      return { success: false, error: "View type selector (fl_type) not found", state, trace: trace.toJSON() };
     }
+    trace.mark("fl_type_found");
 
     // Open the dropdown, then poll until the items appear (up to 3 s).
     // A fixed delay is unreliable — the dropdown may not be rendered yet when
@@ -82,8 +89,9 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
       }
     }
     if (sortedItems.length < DROPDOWN_ORDER.length) {
-      return { success: false, error: "View type dropdown did not open", state };
+      return { success: false, error: "View type dropdown did not open", state, trace: trace.toJSON() };
     }
+    trace.mark("dropdown_open");
 
     // If the app exposes a checked item, use it to verify DROPDOWN_ORDER hasn't
     // changed. If checked state is absent (app doesn't always set it), skip the
@@ -96,15 +104,17 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
         success: false,
         error: `Dropdown order mismatch — expected "${currentView}" at position ${expectedCheckedIndex}, checked item is at position ${checkedIndex}. App layout may have changed.`,
         state,
+        trace: trace.toJSON(),
       };
     }
 
     const targetIndex = DROPDOWN_ORDER.indexOf(view as CalendarView);
     if (targetIndex < 0 || targetIndex >= sortedItems.length) {
-      return { success: false, error: `View option "${view}" not found in dropdown`, state };
+      return { success: false, error: `View option "${view}" not found in dropdown`, state, trace: trace.toJSON() };
     }
 
     await tap(sortedItems[targetIndex].center.x, sortedItems[targetIndex].center.y, config);
+    trace.mark("tap_item");
 
     // Poll until the view transition completes rather than waiting a fixed delay.
     let verifiedView: ReturnType<typeof detectView> = "unknown";
@@ -114,12 +124,14 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
       verifiedView = detectView(parseNodes(await dumpUiXml(config)));
       if (verifiedView === view) break;
     }
+    trace.mark("view_verified");
     if (verifiedView !== view) {
       return {
         success: false,
         error: `View change unconfirmed — expected "${view}", got "${verifiedView}"`,
         state: { tab: "calendar", view: verifiedView },
         ...(warning ? { warning } : {}),
+        trace: trace.toJSON(),
       };
     }
 
@@ -127,9 +139,10 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
       success: true,
       state: { tab: "calendar", view: view as CalendarView },
       ...(warning ? { warning } : {}),
+      trace: trace.toJSON(),
     };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return { success: false, error: err instanceof Error ? err.message : String(err), trace: trace.toJSON() };
   }
 }
 
