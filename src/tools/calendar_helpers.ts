@@ -1,0 +1,213 @@
+import { AdbConfig, tap } from "../adb.js";
+import type { TabName } from "../tablet.js";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export type CalendarView = "day" | "week" | "month" | "schedule" | "unknown";
+
+export interface CalendarState {
+  tab: TabName | null;
+  view: CalendarView;
+}
+
+export interface UiNode {
+  resourceId: string;   // full: "com.fujia.calendar:id/fl_type"
+  shortId: string;      // short: "fl_type"
+  text: string;
+  contentDesc: string;
+  className: string;
+  checked: boolean;
+  clickable: boolean;
+  checkable: boolean;
+  bounds: { x1: number; y1: number; x2: number; y2: number };
+  center: { x: number; y: number };
+}
+
+export interface CalendarEvent {
+  title: string;
+  time?: string;
+  date?: string;
+  emoji?: string;
+  checked?: boolean;
+}
+
+// ─── XML Parsing ─────────────────────────────────────────────────────────────
+
+export function parseNodes(xml: string): UiNode[] {
+  const nodes: UiNode[] = [];
+  const chunks = xml.split("<node ").slice(1);
+  for (const chunk of chunks) {
+    const end = chunk.indexOf(">");
+    if (end === -1) continue;
+    const attr = chunk.substring(0, end).replace(/\/$/, "");
+    const get = (k: string): string =>
+      (attr.match(new RegExp(k + '="([^"]*)"')) ?? [])[1] ?? "";
+    const b = attr.match(/bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/);
+    if (!b) continue;
+    const x1 = +b[1], y1 = +b[2], x2 = +b[3], y2 = +b[4];
+    const resourceId = get("resource-id");
+    nodes.push({
+      resourceId,
+      shortId: resourceId.replace(/^[^/]+\//, ""),
+      text: get("text"),
+      contentDesc: get("content-desc"),
+      className: get("class"),
+      checked: get("checked") === "true",
+      clickable: get("clickable") === "true",
+      checkable: get("checkable") === "true",
+      bounds: { x1, y1, x2, y2 },
+      center: { x: Math.floor((x1 + x2) / 2), y: Math.floor((y1 + y2) / 2) },
+    });
+  }
+  return nodes;
+}
+
+export function findNode(nodes: UiNode[], shortId: string): UiNode | null {
+  return nodes.find((n) => n.shortId === shortId) ?? null;
+}
+
+export function findNodes(nodes: UiNode[], shortId: string): UiNode[] {
+  return nodes.filter((n) => n.shortId === shortId);
+}
+
+// ─── State Detection ─────────────────────────────────────────────────────────
+
+const TAB_MAP: Record<string, TabName> = {
+  rb_calendar1: "calendar",
+  rb_chores1: "tasks",
+  rb_reward1: "day",
+  rb_meals1: "meals",
+  rb_photos1: "photos",
+  rb_lists1: "lists",
+  rb_steep1: "sleep",
+  rb_settings1: "goal",
+};
+
+export function detectView(nodes: UiNode[]): CalendarView {
+  if (nodes.some((n) => n.shortId === "rl_month_view")) return "month";
+  if (nodes.some((n) => n.shortId === "rv_chores")) return "week";
+  if (nodes.some((n) => n.shortId === "item_schedule_view")) return "schedule";
+  if (nodes.some((n) => n.shortId === "lv_left")) return "day";
+  return "unknown";
+}
+
+export function extractState(nodes: UiNode[]): CalendarState {
+  const checkedTab = nodes.find(
+    (n) => n.shortId in TAB_MAP && n.checked && n.checkable
+  );
+  return {
+    tab: checkedTab ? (TAB_MAP[checkedTab.shortId] ?? null) : null,
+    view: detectView(nodes),
+  };
+}
+
+/** Returns true when neither a day-view nor week/month/schedule-view marker is found. */
+export function isCalendarDirty(nodes: UiNode[]): boolean {
+  return (
+    !nodes.some((n) => n.shortId === "fl_type") &&
+    !nodes.some((n) => n.shortId === "lv_left")
+  );
+}
+
+// ─── Event Parsing ────────────────────────────────────────────────────────────
+
+export function parseDayEvents(nodes: UiNode[]): CalendarEvent[] {
+  const events: CalendarEvent[] = [];
+  const emojiNodes = findNodes(nodes, "iv_emoji");
+  const titleNodes = findNodes(nodes, "tv_event_name");
+  const seen = new Set<string>();
+  const count = Math.min(emojiNodes.length, titleNodes.length);
+  for (let i = 0; i < count; i++) {
+    const title = titleNodes[i].text;
+    if (!title || seen.has(title)) continue;
+    seen.add(title);
+    events.push({
+      title,
+      emoji: emojiNodes[i].text || undefined,
+      checked: emojiNodes[i].checked,
+    });
+  }
+  return events;
+}
+
+export function parseWeekEvents(nodes: UiNode[]): CalendarEvent[] {
+  const events: CalendarEvent[] = [];
+  let currentDate = "";
+  let inGrid = false;
+  let pendingTitle: string | null = null;
+
+  for (const node of nodes) {
+    if (node.shortId === "tv_day") {
+      if (pendingTitle !== null) {
+        events.push({ title: pendingTitle, date: currentDate });
+        pendingTitle = null;
+      }
+      inGrid = true;
+      currentDate = node.text;
+    }
+    if (!inGrid) continue;
+    if (node.shortId === "tv_title" && node.text) {
+      if (pendingTitle !== null) {
+        events.push({ title: pendingTitle, date: currentDate });
+      }
+      pendingTitle = node.text;
+    }
+    if (node.shortId === "tv_time" && pendingTitle !== null) {
+      events.push({ title: pendingTitle, date: currentDate, time: node.text });
+      pendingTitle = null;
+    }
+  }
+  if (pendingTitle !== null) {
+    events.push({ title: pendingTitle, date: currentDate });
+  }
+  return events;
+}
+
+export function parseMonthEvents(nodes: UiNode[]): CalendarEvent[] {
+  const events: CalendarEvent[] = [];
+  let currentDate = "";
+  let pendingTitle: string | null = null;
+
+  for (const node of nodes) {
+    if (node.shortId === "tv_day") {
+      if (pendingTitle !== null) {
+        events.push({ title: pendingTitle, date: currentDate });
+        pendingTitle = null;
+      }
+      currentDate = node.text;
+    }
+    if (node.shortId === "tv_title" && node.text) {
+      if (pendingTitle !== null) {
+        events.push({ title: pendingTitle, date: currentDate });
+      }
+      pendingTitle = node.text;
+    }
+    if (node.shortId === "tv_time" && pendingTitle !== null) {
+      events.push({ title: pendingTitle, date: currentDate, time: node.text });
+      pendingTitle = null;
+    }
+  }
+  if (pendingTitle !== null) {
+    events.push({ title: pendingTitle, date: currentDate });
+  }
+  return events;
+}
+
+export function parseCalendarEvents(nodes: UiNode[], view: CalendarView): CalendarEvent[] {
+  if (view === "day") return parseDayEvents(nodes);
+  if (view === "week") return parseWeekEvents(nodes);
+  if (view === "month") return parseMonthEvents(nodes);
+  return [];
+}
+
+// ─── ADB Helpers ─────────────────────────────────────────────────────────────
+
+export async function tapByResourceId(
+  shortId: string,
+  nodes: UiNode[],
+  config: AdbConfig
+): Promise<void> {
+  const node = findNode(nodes, shortId);
+  if (!node) throw new Error(`UI element not found: ${shortId}`);
+  await tap(node.center.x, node.center.y, config);
+}
