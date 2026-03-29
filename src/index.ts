@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
 import { AdbConfig, captureScreen, ensureConnected } from "./adb.js";
 import { CheckResult, formatCheckup, runCheckup, warmCache } from "./tablet.js";
 import { Trace } from "./trace.js";
@@ -94,9 +95,10 @@ const allCommands = [
 
 function registerMcpTools(server: McpServer, config: AdbConfig): void {
   for (const cmd of allCommands.filter((c) => c.name !== captureScreenCliCommand.name)) {
-    server.tool(cmd.name, cmd.description, {}, async () => {
-      const result = await cmd.run({}, config);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    const shape = cmd.schema instanceof z.ZodObject ? cmd.schema.shape : {};
+    server.tool(cmd.name, cmd.description, shape, async (args: unknown) => {
+      const result = await cmd.run(args, config);
+      return { content: [{ type: "text" as const, text: JSON.stringify(result) }] };
     });
   }
 
