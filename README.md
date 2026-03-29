@@ -12,26 +12,13 @@ Developed on the 27" TM27 model — should work on other Dragon Touch sizes (21"
 - `adb` in PATH — [Android SDK Platform Tools](https://developer.android.com/tools/releases/platform-tools) (macOS: `brew install android-platform-tools`)
 - Tablet reachable over the network with ADB enabled (`adb tcpip 5555`)
 
-## Add to Claude Desktop
+## Add to Claude
 
-Config file location:
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-- **Linux**: `~/.config/Claude/claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "dragon-touch": {
-      "command": "npx",
-      "args": ["dragon-touch-mcp"],
-      "env": {
-        "DRAGON_TOUCH_IP": "192.168.178.132"
-      }
-    }
-  }
-}
+```bash
+claude mcp add dragon-touch -e DRAGON_TOUCH_IP=192.168.178.132 -- npx dragon-touch-mcp
 ```
+
+Replace `192.168.178.132` with your tablet's IP address.
 
 | Variable | Default | Description |
 |---|---|---|
