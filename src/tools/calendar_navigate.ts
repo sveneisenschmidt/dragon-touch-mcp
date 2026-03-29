@@ -37,9 +37,14 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
     let warning: string | undefined;
     if (state.tab !== "calendar") {
       await switchTab("calendar", config);
-      const xml2 = await dumpUiXml(config);
-      calendarNodes = parseNodes(xml2);
-      calendarView = extractState(calendarNodes).view;
+      // Poll until the calendar view is fully rendered after the tab switch
+      const deadlineTab = Date.now() + 3000;
+      while (Date.now() < deadlineTab) {
+        await new Promise((r) => setTimeout(r, 300));
+        calendarNodes = parseNodes(await dumpUiXml(config));
+        calendarView = extractState(calendarNodes).view;
+        if (calendarView !== "unknown") break;
+      }
       warning = "Switched to calendar tab";
     }
 

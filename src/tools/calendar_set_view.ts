@@ -105,11 +105,15 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
     }
 
     await tap(sortedItems[targetIndex].center.x, sortedItems[targetIndex].center.y, config);
-    await new Promise((r) => setTimeout(r, 800));
 
-    // Verify the view actually changed — don't trust that the tap landed correctly.
-    const xmlVerify = await dumpUiXml(config);
-    const verifiedView = detectView(parseNodes(xmlVerify));
+    // Poll until the view transition completes rather than waiting a fixed delay.
+    let verifiedView: ReturnType<typeof detectView> = "unknown";
+    const deadlineVerify = Date.now() + 3000;
+    while (Date.now() < deadlineVerify) {
+      await new Promise((r) => setTimeout(r, 300));
+      verifiedView = detectView(parseNodes(await dumpUiXml(config)));
+      if (verifiedView === view) break;
+    }
     if (verifiedView !== view) {
       return {
         success: false,

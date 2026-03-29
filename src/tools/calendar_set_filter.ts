@@ -64,7 +64,7 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
 
     // Open filter panel, then poll until profile nodes appear
     await tap(flFilter.center.x, flFilter.center.y, config);
-    let filterNodes = parseNodes(await dumpUiXml(config));
+    let filterNodes: ReturnType<typeof parseNodes> = [];
     const deadlineFilter = Date.now() + 3000;
     while (Date.now() < deadlineFilter) {
       await new Promise((r) => setTimeout(r, 300));
@@ -96,7 +96,17 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
       const isCurrentlyVisible = toggle.checked;
       if (shouldBeVisible !== isCurrentlyVisible) {
         await tap(toggle.center.x, toggle.center.y, config);
-        await new Promise((r) => setTimeout(r, 300));
+        // Poll until the toggle reflects the new state (up to 2 s)
+        const deadlineToggle = Date.now() + 2000;
+        while (Date.now() < deadlineToggle) {
+          await new Promise((r) => setTimeout(r, 200));
+          const toggleXml = await dumpUiXml(config);
+          const toggleNodes = parseNodes(toggleXml);
+          const refreshed = findNodes(toggleNodes, "opened").find(
+            (o) => o.bounds.y1 < toggle.bounds.y2 && o.bounds.y2 > toggle.bounds.y1
+          );
+          if (refreshed && refreshed.checked === shouldBeVisible) break;
+        }
       }
       if (shouldBeVisible) activeProfiles.push(name);
     }
