@@ -8,14 +8,10 @@ const schema = z.object({
   view: z.enum(["day", "week", "month", "schedule"]),
 });
 
-// Known display labels for each view type across app locales.
-// Matched case-insensitively against the "title" nodes in the dropdown overlay.
-const VIEW_LABELS: Record<string, string[]> = {
-  schedule: ["terminübersicht", "schedule", "agenda"],
-  day:      ["tag", "day"],
-  week:     ["woche", "week"],
-  month:    ["monat", "month"],
-};
+// Observed top-to-bottom order of view options in the fl_type dropdown.
+// Used together with the checked item's position at runtime to verify the order
+// hasn't changed — if it has, we fail explicitly rather than tap the wrong item.
+const DROPDOWN_ORDER: CalendarView[] = ["schedule", "day", "week", "month"];
 
 async function run(args: unknown, config: AdbConfig): Promise<unknown> {
   try {
@@ -69,18 +65,35 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
     await tap(flType.center.x, flType.center.y, config);
     await new Promise((r) => setTimeout(r, 800));
 
-    // Third dump: read dropdown items (all "title" nodes in the overlay)
+    // Third dump: read dropdown items sorted top-to-bottom
     const xml3 = await dumpUiXml(config);
     const nodes3 = parseNodes(xml3);
-    const titleItems = findNodes(nodes3, "title");
-    const labels = VIEW_LABELS[view] ?? [];
-    const target = titleItems.find((n) => labels.includes(n.text.toLowerCase()));
-    if (!target) {
-      const found = titleItems.map((n) => n.text).join(", ");
-      return { success: false, error: `View option "${view}" not found in dropdown. Available items: ${found || "(none)"}`, state };
+    const sortedItems = findNodes(nodes3, "title").sort((a, b) => a.bounds.y1 - b.bounds.y1);
+
+    // The currently active view's item carries checked=true.
+    // Cross-check its position against DROPDOWN_ORDER using the view we detected
+    // before opening the dropdown. If they disagree, the app layout has changed and
+    // we refuse to guess rather than silently tapping the wrong item.
+    const checkedIndex = sortedItems.findIndex((n) => n.checked);
+    if (checkedIndex === -1) {
+      return { success: false, error: "Active view not identifiable in dropdown (no checked item)", state };
+    }
+    const currentView = state.view === "day" ? "day" : (state.view as CalendarView);
+    const expectedCheckedIndex = DROPDOWN_ORDER.indexOf(currentView);
+    if (expectedCheckedIndex !== -1 && checkedIndex !== expectedCheckedIndex) {
+      return {
+        success: false,
+        error: `Dropdown order mismatch — expected "${currentView}" at position ${expectedCheckedIndex}, checked item is at position ${checkedIndex}. App layout may have changed.`,
+        state,
+      };
     }
 
-    await tap(target.center.x, target.center.y, config);
+    const targetIndex = DROPDOWN_ORDER.indexOf(view as CalendarView);
+    if (targetIndex < 0 || targetIndex >= sortedItems.length) {
+      return { success: false, error: `View option "${view}" not found in dropdown`, state };
+    }
+
+    await tap(sortedItems[targetIndex].center.x, sortedItems[targetIndex].center.y, config);
 
     return {
       success: true,
