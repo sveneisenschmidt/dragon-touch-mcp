@@ -12,13 +12,14 @@ const schema = z.object({
 });
 
 async function run(args: unknown, config: AdbConfig): Promise<unknown> {
-  const { brightness } = schema.parse(args);
-
-  // Disable auto-brightness first, then set the brightness value
-  await setSystemSetting("system", "screen_brightness_mode", "0", config);
-  await setSystemSetting("system", "screen_brightness", String(brightness), config);
-
-  return { success: true, brightness };
+  try {
+    const { brightness } = schema.parse(args);
+    await setSystemSetting("system", "screen_brightness_mode", "0", config);
+    await setSystemSetting("system", "screen_brightness", String(brightness), config);
+    return { success: true, brightness };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 export const setBrightnessCliCommand: CliCommand = {

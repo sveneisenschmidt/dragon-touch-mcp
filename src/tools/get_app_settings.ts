@@ -21,16 +21,16 @@ export function isSensitive(key: string): boolean {
 }
 
 async function run(_args: unknown, config: AdbConfig): Promise<unknown> {
-  const raw = await readSharedPrefs(APP_PACKAGE, config);
-
-  const settings: Record<string, string> = {};
-  for (const [key, value] of Object.entries(raw)) {
-    if (!isSensitive(key)) {
-      settings[key] = value;
+  try {
+    const raw = await readSharedPrefs(APP_PACKAGE, config);
+    const settings: Record<string, string> = {};
+    for (const [key, value] of Object.entries(raw)) {
+      if (!isSensitive(key)) settings[key] = value;
     }
+    return { success: true, settings };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
-
-  return { success: true, settings };
 }
 
 export const getAppSettingsCliCommand: CliCommand = {

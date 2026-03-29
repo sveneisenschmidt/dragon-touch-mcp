@@ -12,11 +12,13 @@ const schema = z.object({
 });
 
 async function run(args: unknown, config: AdbConfig): Promise<unknown> {
-  const { volume } = schema.parse(args);
-
-  await setSystemSetting("system", "volume_music_speaker", String(volume), config);
-
-  return { success: true, volume };
+  try {
+    const { volume } = schema.parse(args);
+    await setSystemSetting("system", "volume_music_speaker", String(volume), config);
+    return { success: true, volume };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 export const setVolumeCliCommand: CliCommand = {

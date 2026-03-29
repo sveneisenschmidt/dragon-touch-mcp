@@ -7,5 +7,11 @@ export const getStatusCliCommand: CliCommand = {
   name: "get_status",
   description: "Check adb, device connectivity, and app installation",
   schema: z.object({}),
-  run: async (_args: unknown, config: AdbConfig) => runCheckup(config),
+  run: async (_args: unknown, config: AdbConfig) => {
+    try {
+      return await runCheckup(config);
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  },
 };

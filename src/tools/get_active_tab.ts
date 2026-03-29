@@ -7,5 +7,11 @@ export const getActiveTabCliCommand: CliCommand = {
   name: "get_active_tab",
   description: "Return the currently active tab/view on the Dragon Touch tablet",
   schema: z.object({}),
-  run: async (_args: unknown, config: AdbConfig) => getActiveTab(config),
+  run: async (_args: unknown, config: AdbConfig) => {
+    try {
+      return await getActiveTab(config);
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  },
 };
