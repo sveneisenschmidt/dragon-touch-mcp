@@ -124,6 +124,50 @@ export function formatCheckup(result: CheckResult): string {
   return lines.join("\n");
 }
 
+type FetchXmlResult =
+  | { success: true; xml: string }
+  | { success: false; error: string };
+
+/** Caller is responsible for ensuring the device is connected before calling. */
+async function fetchUiXml(config: AdbConfig): Promise<FetchXmlResult> {
+  try {
+    const xml = await dumpUiXml(config);
+    return { success: true, xml };
+  } catch (err) {
+    return {
+      success: false,
+      error: `Failed to dump UI: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
+export type ActiveTabResult =
+  | { success: true; tab: TabName }
+  | { success: false; error: string };
+
+export async function getActiveTab(config: AdbConfig): Promise<ActiveTabResult> {
+  const connected = await ensureConnected(config);
+  if (!connected) {
+    return {
+      success: false,
+      error: `Cannot reach device at ${config.ip}:${config.port}. Is the tablet on the same network?`,
+    };
+  }
+
+  const result = await fetchUiXml(config);
+  if (!result.success) return result;
+
+  for (const [tab, resourceId] of Object.entries(TAB_RESOURCE_IDS) as [TabName, string][]) {
+    const escaped = resourceId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`resource-id="${escaped}"[^>]*checked="true"`);
+    if (pattern.test(result.xml)) {
+      return { success: true, tab };
+    }
+  }
+
+  return { success: false, error: "No active tab found. Is the app in the foreground?" };
+}
+
 export type TabSwitchResult =
   | { success: true; trace: TraceResult }
   | { success: false; error: string; trace: TraceResult };
@@ -157,17 +201,12 @@ export async function switchTab(
   let center = tabCache.get(tab);
 
   if (!center) {
-    let xml: string;
-    try {
-      xml = await dumpUiXml(config);
-      trace.mark("ui_dump");
-    } catch (err) {
-      return {
-        success: false,
-        error: `Failed to dump UI: ${err instanceof Error ? err.message : String(err)}`,
-        trace: trace.toJSON(),
-      };
+    const fetched = await fetchUiXml(config);
+    trace.mark("ui_dump");
+    if (!fetched.success) {
+      return { success: false, error: fetched.error, trace: trace.toJSON() };
     }
+    const xml = fetched.xml;
 
     const resourceId = TAB_RESOURCE_IDS[tab];
     const found = findElementCenter(xml, resourceId);
