@@ -41,6 +41,15 @@ async function run(_args: unknown, config: AdbConfig): Promise<unknown> {
       warning = "Switched to calendar tab";
     }
 
+    if (calendarView === "schedule" || calendarView === "unknown") {
+      return {
+        success: false,
+        error: `calendar_get_schedule does not support "${calendarView}" view — switch to day, week, or month first`,
+        state: { tab: "calendar", view: calendarView },
+        ...(warning ? { warning } : {}),
+      };
+    }
+
     const periodNode = findNode(calendarNodes, "tv_range") ?? findNode(calendarNodes, "tv_week");
     const period = periodNode?.text ?? "";
     const events = parseCalendarEvents(calendarNodes, calendarView);

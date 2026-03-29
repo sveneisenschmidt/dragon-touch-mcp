@@ -80,8 +80,10 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
     const showAll = profiles.length === 0;
     const activeProfiles: string[] = [];
 
-    for (const { name, toggle } of pairs) {
-      if (name === "Alles auswählen") continue; // skip the "select all" meta-option
+    // The first row (lowest Y) is the "select all" meta-option — skip it regardless of locale.
+    const profilePairs = pairs.slice(1);
+
+    for (const { name, toggle } of profilePairs) {
       const shouldBeVisible = showAll || profiles.includes(name);
       const isCurrentlyVisible = toggle.checked;
       if (shouldBeVisible !== isCurrentlyVisible) {
@@ -90,6 +92,7 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
       }
       if (shouldBeVisible) activeProfiles.push(name);
     }
+
 
     // Close filter panel
     await adbExec("shell input keyevent 4", config);
