@@ -6,9 +6,6 @@ import {
   detectView,
   extractState,
   isCalendarDirty,
-  parseDayEvents,
-  parseWeekEvents,
-  parseMonthEvents,
   parseCalendarEvents,
   toShortId,
   parseBounds,
@@ -240,11 +237,11 @@ describe("isCalendarDirty", () => {
   });
 });
 
-// ─── parseDayEvents ───────────────────────────────────────────────────────────
+// ─── parseCalendarEvents — day view ──────────────────────────────────────────
 
-describe("parseDayEvents", () => {
+describe("parseCalendarEvents — day", () => {
   it("parses events from day view XML", () => {
-    const events = parseDayEvents(parseNodes(DAY_VIEW_XML));
+    const events = parseCalendarEvents(parseNodes(DAY_VIEW_XML), "day");
     expect(events).toHaveLength(2);
     expect(events[0]).toEqual({ title: "TV (17:30-18:30)", emoji: "📺", checked: false });
     expect(events[1]).toEqual({ title: "Schlafen (19:00)", emoji: "🛏️", checked: true });
@@ -255,20 +252,20 @@ describe("parseDayEvents", () => {
       `<node resource-id="com.fujia.calendar:id/iv_emoji" class="android.widget.CheckedTextView" text="📺" clickable="false" checkable="true" checked="false" bounds="[0,400][60,460]" />
        <node resource-id="com.fujia.calendar:id/tv_event_name" class="android.widget.TextView" text="TV (17:30-18:30)" clickable="true" checkable="false" checked="false" bounds="[60,400][1080,460]" />
        </hierarchy>`);
-    const events = parseDayEvents(parseNodes(doubled));
+    const events = parseCalendarEvents(parseNodes(doubled), "day");
     expect(events.filter((e) => e.title === "TV (17:30-18:30)")).toHaveLength(1);
   });
 
   it("returns empty array when no events", () => {
-    expect(parseDayEvents(parseNodes(DIRTY_XML))).toHaveLength(0);
+    expect(parseCalendarEvents(parseNodes(DIRTY_XML), "day")).toHaveLength(0);
   });
 });
 
-// ─── parseWeekEvents ─────────────────────────────────────────────────────────
+// ─── parseCalendarEvents — week view ─────────────────────────────────────────
 
-describe("parseWeekEvents", () => {
+describe("parseCalendarEvents — week", () => {
   it("parses events grouped by date", () => {
-    const events = parseWeekEvents(parseNodes(WEEK_VIEW_XML));
+    const events = parseCalendarEvents(parseNodes(WEEK_VIEW_XML), "week");
     expect(events).toHaveLength(3);
     expect(events[0]).toEqual({ title: "Geburtstag Tabitha", date: "23", time: "Ganztägig" });
     expect(events[1]).toEqual({ title: "Sport Tilian", date: "23", time: "18:00-19:00" });
@@ -282,37 +279,31 @@ describe("parseWeekEvents", () => {
       <node resource-id="com.fujia.calendar:id/tv_day" text="25" bounds="[0,100][100,140]" />
       <node resource-id="com.fujia.calendar:id/tv_title" text="Meeting" bounds="[0,140][100,180]" />
     </hierarchy>`;
-    const events = parseWeekEvents(parseNodes(xml));
+    const events = parseCalendarEvents(parseNodes(xml), "week");
     expect(events).toHaveLength(1);
     expect(events[0].title).toBe("Meeting");
   });
 });
 
-// ─── parseMonthEvents ─────────────────────────────────────────────────────────
+// ─── parseCalendarEvents — month view ────────────────────────────────────────
 
-describe("parseMonthEvents", () => {
+describe("parseCalendarEvents — month", () => {
   it("parses month events with dates and times", () => {
-    const events = parseMonthEvents(parseNodes(MONTH_VIEW_XML));
+    const events = parseCalendarEvents(parseNodes(MONTH_VIEW_XML), "month");
     expect(events).toHaveLength(2);
     expect(events[0]).toEqual({ title: "Geburtstag Julia", date: "März 1", time: "Ganztägig" });
     expect(events[1]).toEqual({ title: "Sport Tilian", date: "2" });
   });
 });
 
-// ─── parseCalendarEvents ──────────────────────────────────────────────────────
+// ─── parseCalendarEvents — other views ───────────────────────────────────────
 
-describe("parseCalendarEvents", () => {
-  it("delegates to parseDayEvents for day view", () => {
-    const nodes = parseNodes(DAY_VIEW_XML);
-    expect(parseCalendarEvents(nodes, "day")).toHaveLength(2);
-  });
-
-  it("delegates to parseWeekEvents for week view", () => {
-    const nodes = parseNodes(WEEK_VIEW_XML);
-    expect(parseCalendarEvents(nodes, "week")).toHaveLength(3);
-  });
-
+describe("parseCalendarEvents — other", () => {
   it("returns empty array for schedule view", () => {
     expect(parseCalendarEvents([], "schedule")).toHaveLength(0);
+  });
+
+  it("returns empty array for unknown view", () => {
+    expect(parseCalendarEvents([], "unknown")).toHaveLength(0);
   });
 });

@@ -2,9 +2,9 @@ import { z } from "zod";
 import { AdbConfig, dumpUiXml, ensureConnected, wakeScreen, tap } from "../adb.js";
 import { switchTab } from "../tablet.js";
 import type { CliCommand } from "../cli.js";
-import { parseNodes, extractState, isCalendarDirty, findNode, findNodes, type CalendarView } from "./calendar_helpers.js";
+import { parseNodes, extractState, detectView, isCalendarDirty, findNode, findNodes, type CalendarView } from "./calendar_helpers.js";
 
-const schema = z.object({
+export const setViewSchema = z.object({
   view: z.enum(["day", "week", "month", "schedule"]),
 });
 
@@ -15,7 +15,7 @@ const DROPDOWN_ORDER: CalendarView[] = ["schedule", "day", "week", "month"];
 
 async function run(args: unknown, config: AdbConfig): Promise<unknown> {
   try {
-    const { view } = schema.parse(args);
+    const { view } = setViewSchema.parse(args);
 
     const connected = await ensureConnected(config);
     if (!connected) {
@@ -94,6 +94,19 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
     }
 
     await tap(sortedItems[targetIndex].center.x, sortedItems[targetIndex].center.y, config);
+    await new Promise((r) => setTimeout(r, 800));
+
+    // Verify the view actually changed — don't trust that the tap landed correctly.
+    const xmlVerify = await dumpUiXml(config);
+    const verifiedView = detectView(parseNodes(xmlVerify));
+    if (verifiedView !== view) {
+      return {
+        success: false,
+        error: `View change unconfirmed — expected "${view}", got "${verifiedView}"`,
+        state: { tab: "calendar", view: verifiedView },
+        ...(warning ? { warning } : {}),
+      };
+    }
 
     return {
       success: true,
@@ -109,6 +122,6 @@ export const calendarSetViewCliCommand: CliCommand = {
   name: "calendar_set_view",
   description:
     "Switch the Dragon Touch calendar to a specific view: day, week, month, or schedule.",
-  schema,
+  schema: setViewSchema,
   run,
 };

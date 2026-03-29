@@ -4,7 +4,7 @@ import { switchTab } from "../tablet.js";
 import type { CliCommand } from "../cli.js";
 import { parseNodes, extractState, isCalendarDirty, findNode, findNodes } from "./calendar_helpers.js";
 
-const schema = z.object({
+export const setFilterSchema = z.object({
   profiles: z
     .array(z.string())
     .describe("Profile names to show. Empty array shows all profiles."),
@@ -12,7 +12,7 @@ const schema = z.object({
 
 async function run(args: unknown, config: AdbConfig): Promise<unknown> {
   try {
-    const { profiles } = schema.parse(args);
+    const { profiles } = setFilterSchema.parse(args);
 
     const connected = await ensureConnected(config);
     if (!connected) {
@@ -68,14 +68,16 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
 
     const profileNameNodes = findNodes(filterNodes, "tv_category_name")
       .sort((a, b) => a.bounds.y1 - b.bounds.y1);
-    const openedNodes = findNodes(filterNodes, "opened")
-      .sort((a, b) => a.bounds.y1 - b.bounds.y1);
+    const openedNodes = findNodes(filterNodes, "opened");
 
-    // Pair profiles with their toggles (matched by sorted y-position)
-    const pairs = profileNameNodes.map((p, i) => ({
-      name: p.text,
-      toggle: openedNodes[i],
-    })).filter((pair) => pair.toggle);
+    // Pair each profile label with the toggle whose Y bounds overlap — robust to
+    // the "select all" row having a different label/toggle Y offset than expected.
+    const pairs = profileNameNodes.map((p) => {
+      const toggle = openedNodes.find(
+        (o) => o.bounds.y1 < p.bounds.y2 && o.bounds.y2 > p.bounds.y1
+      );
+      return toggle ? { name: p.text, toggle } : null;
+    }).filter((pair): pair is { name: string; toggle: typeof openedNodes[0] } => pair !== null);
 
     const showAll = profiles.length === 0;
     const activeProfiles: string[] = [];
@@ -112,6 +114,6 @@ export const calendarSetFilterCliCommand: CliCommand = {
   name: "calendar_set_filter",
   description:
     "Show or hide family member profiles in the Dragon Touch calendar filter. Pass an empty array to show all profiles.",
-  schema,
+  schema: setFilterSchema,
   run,
 };

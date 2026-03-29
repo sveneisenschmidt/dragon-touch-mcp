@@ -1,12 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { z } from "zod";
+import { navigateSchema } from "../tools/calendar_navigate.js";
+import { setViewSchema } from "../tools/calendar_set_view.js";
+import { setFilterSchema } from "../tools/calendar_set_filter.js";
 
 // ─── calendar_navigate schema ─────────────────────────────────────────────────
-
-const navigateSchema = z.object({
-  direction: z.enum(["prev", "next"]),
-  steps: z.number().int().min(1).max(30).default(1),
-});
 
 describe("calendar_navigate schema", () => {
   it("accepts valid direction", () => {
@@ -18,8 +15,8 @@ describe("calendar_navigate schema", () => {
     expect(navigateSchema.parse({ direction: "next" }).steps).toBe(1);
   });
 
-  it("rejects steps above 30", () => {
-    expect(() => navigateSchema.parse({ direction: "next", steps: 31 })).toThrow();
+  it("rejects steps above max", () => {
+    expect(() => navigateSchema.parse({ direction: "next", steps: 11 })).toThrow();
   });
 
   it("rejects steps below 1", () => {
@@ -32,10 +29,6 @@ describe("calendar_navigate schema", () => {
 });
 
 // ─── calendar_set_view schema ─────────────────────────────────────────────────
-
-const setViewSchema = z.object({
-  view: z.enum(["day", "week", "month", "schedule"]),
-});
 
 describe("calendar_set_view schema", () => {
   it("accepts all valid view types", () => {
@@ -50,10 +43,6 @@ describe("calendar_set_view schema", () => {
 });
 
 // ─── calendar_set_filter schema ───────────────────────────────────────────────
-
-const setFilterSchema = z.object({
-  profiles: z.array(z.string()),
-});
 
 describe("calendar_set_filter schema", () => {
   it("accepts empty array (show all)", () => {

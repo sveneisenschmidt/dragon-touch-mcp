@@ -4,14 +4,15 @@ import { switchTab } from "../tablet.js";
 import type { CliCommand } from "../cli.js";
 import { parseNodes, extractState, isCalendarDirty, findNode } from "./calendar_helpers.js";
 
-const schema = z.object({
+export const navigateSchema = z.object({
   direction: z.enum(["prev", "next"]),
-  steps: z.number().int().min(1).max(30).default(1),
+  // Each step is one tap; taps are 400 ms apart. Keep steps small for responsive behaviour.
+  steps: z.number().int().min(1).max(10).default(1),
 });
 
 async function run(args: unknown, config: AdbConfig): Promise<unknown> {
   try {
-    const { direction, steps } = schema.parse(args);
+    const { direction, steps } = navigateSchema.parse(args);
 
     const connected = await ensureConnected(config);
     if (!connected) {
@@ -73,6 +74,6 @@ export const calendarNavigateCliCommand: CliCommand = {
   name: "calendar_navigate",
   description:
     "Navigate the Dragon Touch calendar forward or backward. Step unit matches the active view: one day in day-view, one week in week-view, one month in month-view.",
-  schema,
+  schema: navigateSchema,
   run,
 };

@@ -1,5 +1,4 @@
 import { XMLParser } from "fast-xml-parser";
-import { AdbConfig, tap } from "../adb.js";
 import { TAB_RESOURCE_IDS, type TabName } from "../tablet.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -153,39 +152,47 @@ export function extractState(nodes: UiNode[]): CalendarState {
   };
 }
 
-/** Returns true when neither a day-view nor week/month/schedule-view marker is found. */
+/** Returns true when no known calendar-view marker is present (dialog open or wrong screen). */
 export function isCalendarDirty(nodes: UiNode[]): boolean {
   return (
     !nodes.some((n) => n.shortId === "fl_type") &&
-    !nodes.some((n) => n.shortId === "lv_left")
+    !nodes.some((n) => n.shortId === "lv_left") &&
+    !nodes.some((n) => n.shortId === "item_schedule_view")
   );
 }
 
 // ─── Event Parsing ────────────────────────────────────────────────────────────
 
-export function parseDayEvents(nodes: UiNode[]): CalendarEvent[] {
-  const events: CalendarEvent[] = [];
+function parseDayEvents(nodes: UiNode[]): CalendarEvent[] {
   const emojiNodes = findNodes(nodes, "iv_emoji");
   const titleNodes = findNodes(nodes, "tv_event_name");
   const seen = new Set<string>();
-  const count = Math.min(emojiNodes.length, titleNodes.length);
-  for (let i = 0; i < count; i++) {
-    const title = titleNodes[i].text;
+  const events: CalendarEvent[] = [];
+
+  for (const emoji of emojiNodes) {
+    // Pair by Y-overlap: find the title node that shares the same row as this emoji.
+    const titleNode = titleNodes.find(
+      (t) => t.bounds.y1 < emoji.bounds.y2 && t.bounds.y2 > emoji.bounds.y1
+    );
+    const title = titleNode?.text;
     if (!title || seen.has(title)) continue;
     seen.add(title);
-    events.push({
-      title,
-      emoji: emojiNodes[i].text || undefined,
-      checked: emojiNodes[i].checked,
-    });
+    events.push({ title, emoji: emoji.text || undefined, checked: emoji.checked });
   }
   return events;
 }
 
-export function parseWeekEvents(nodes: UiNode[]): CalendarEvent[] {
+/**
+ * Shared parser for week and month grid layouts.
+ * Both views consist of tv_day date headers followed by tv_title/tv_time event pairs.
+ *
+ * @param skipPreGrid  When true, tv_title nodes before the first tv_day are ignored.
+ *                     Week view has profile-name headers above the grid; month view does not.
+ */
+function parseDateGridEvents(nodes: UiNode[], skipPreGrid: boolean): CalendarEvent[] {
   const events: CalendarEvent[] = [];
   let currentDate = "";
-  let inGrid = false;
+  let inGrid = !skipPreGrid;
   let pendingTitle: string | null = null;
 
   for (const node of nodes) {
@@ -215,34 +222,12 @@ export function parseWeekEvents(nodes: UiNode[]): CalendarEvent[] {
   return events;
 }
 
-export function parseMonthEvents(nodes: UiNode[]): CalendarEvent[] {
-  const events: CalendarEvent[] = [];
-  let currentDate = "";
-  let pendingTitle: string | null = null;
+function parseWeekEvents(nodes: UiNode[]): CalendarEvent[] {
+  return parseDateGridEvents(nodes, true);
+}
 
-  for (const node of nodes) {
-    if (node.shortId === "tv_day") {
-      if (pendingTitle !== null) {
-        events.push({ title: pendingTitle, date: currentDate });
-        pendingTitle = null;
-      }
-      currentDate = node.text;
-    }
-    if (node.shortId === "tv_title" && node.text) {
-      if (pendingTitle !== null) {
-        events.push({ title: pendingTitle, date: currentDate });
-      }
-      pendingTitle = node.text;
-    }
-    if (node.shortId === "tv_time" && pendingTitle !== null) {
-      events.push({ title: pendingTitle, date: currentDate, time: node.text });
-      pendingTitle = null;
-    }
-  }
-  if (pendingTitle !== null) {
-    events.push({ title: pendingTitle, date: currentDate });
-  }
-  return events;
+function parseMonthEvents(nodes: UiNode[]): CalendarEvent[] {
+  return parseDateGridEvents(nodes, false);
 }
 
 export function parseCalendarEvents(nodes: UiNode[], view: CalendarView): CalendarEvent[] {
@@ -252,14 +237,3 @@ export function parseCalendarEvents(nodes: UiNode[], view: CalendarView): Calend
   return [];
 }
 
-// ─── ADB Helpers ─────────────────────────────────────────────────────────────
-
-export async function tapByResourceId(
-  shortId: string,
-  nodes: UiNode[],
-  config: AdbConfig
-): Promise<void> {
-  const node = findNode(nodes, shortId);
-  if (!node) throw new Error(`UI element not found: ${shortId}`);
-  await tap(node.center.x, node.center.y, config);
-}
