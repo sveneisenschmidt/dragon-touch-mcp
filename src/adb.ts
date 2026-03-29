@@ -92,9 +92,13 @@ export async function tap(x: number, y: number, config: AdbConfig): Promise<void
 }
 
 export async function dumpUiXml(config: AdbConfig): Promise<string> {
-  await adbExec(`shell uiautomator dump ${REMOTE_PATHS.uiDump}`, config);
-  const { stdout } = await adbExec(`shell cat ${REMOTE_PATHS.uiDump}`, config);
-  await adbExec(`shell rm -f ${REMOTE_PATHS.uiDump}`, config).catch(() => {});
+  // Combine dump+cat into a single shell invocation to avoid a second round-trip.
+  // rm runs fire-and-forget so it doesn't block the return.
+  const { stdout } = await adbExec(
+    `shell "uiautomator dump ${REMOTE_PATHS.uiDump} > /dev/null && cat ${REMOTE_PATHS.uiDump}"`,
+    config
+  );
+  adbExec(`shell rm -f ${REMOTE_PATHS.uiDump}`, config).catch(() => {});
   return stdout;
 }
 

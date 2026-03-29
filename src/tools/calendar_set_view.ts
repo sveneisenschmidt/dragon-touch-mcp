@@ -48,23 +48,22 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
       trace.mark("switch_tab");
     }
 
-    // Day view uses lv_left/iv_right and has no fl_type — need to enter week view first
-    // to access fl_type. Tap the date header (tv_week) to expand the view switcher.
+    // Day view has no fl_type — tap the date header (tv_week) to expand the view
+    // switcher first, then poll until fl_type appears. For all other views fl_type
+    // is already present in the initial dump, so no extra round-trip is needed.
+    let nodes2 = nodes;
     if (state.view === "day") {
       const tvWeek = findNode(nodes, "tv_week");
       if (!tvWeek) {
         return { success: false, error: "Cannot find date header to open view switcher", state, trace: trace.toJSON() };
       }
       await tap(tvWeek.center.x, tvWeek.center.y, config);
-    }
-
-    // Second dump: find fl_type — poll to handle day-view transition animation.
-    let nodes2 = nodes;
-    const deadline2 = Date.now() + 3000;
-    while (Date.now() < deadline2) {
-      await new Promise((r) => setTimeout(r, 300));
-      nodes2 = parseNodes(await dumpUiXml(config));
-      if (findNode(nodes2, "fl_type")) break;
+      const deadline2 = Date.now() + 3000;
+      while (Date.now() < deadline2) {
+        await new Promise((r) => setTimeout(r, 300));
+        nodes2 = parseNodes(await dumpUiXml(config));
+        if (findNode(nodes2, "fl_type")) break;
+      }
     }
     const flType = findNode(nodes2, "fl_type");
     if (!flType) {
