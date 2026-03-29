@@ -10,6 +10,9 @@ import {
   parseWeekEvents,
   parseMonthEvents,
   parseCalendarEvents,
+  toShortId,
+  parseBounds,
+  computeCenter,
 } from "../tools/calendar_helpers.js";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -59,6 +62,50 @@ const MONTH_VIEW_XML = `<?xml version='1.0' encoding='UTF-8'?><hierarchy rotatio
 const DIRTY_XML = `<?xml version='1.0' encoding='UTF-8'?><hierarchy rotation="0">
   <node resource-id="android:id/content" class="android.widget.FrameLayout" clickable="false" checkable="false" checked="false" bounds="[0,0][1080,1920]" />
 </hierarchy>`;
+
+// ─── toShortId ────────────────────────────────────────────────────────────────
+
+describe("toShortId", () => {
+  it("strips the package prefix", () => {
+    expect(toShortId("com.fujia.calendar:id/fl_type")).toBe("fl_type");
+  });
+
+  it("returns the string unchanged when there is no prefix", () => {
+    expect(toShortId("fl_type")).toBe("fl_type");
+  });
+
+  it("returns empty string for empty input", () => {
+    expect(toShortId("")).toBe("");
+  });
+});
+
+// ─── parseBounds ──────────────────────────────────────────────────────────────
+
+describe("parseBounds", () => {
+  it("parses a valid bounds string", () => {
+    expect(parseBounds("[0,100][54,165]")).toEqual({ x1: 0, y1: 100, x2: 54, y2: 165 });
+  });
+
+  it("returns null for an empty string", () => {
+    expect(parseBounds("")).toBeNull();
+  });
+
+  it("returns null for a malformed string", () => {
+    expect(parseBounds("[0,100]")).toBeNull();
+  });
+});
+
+// ─── computeCenter ────────────────────────────────────────────────────────────
+
+describe("computeCenter", () => {
+  it("computes the midpoint", () => {
+    expect(computeCenter({ x1: 0, y1: 100, x2: 54, y2: 165 })).toEqual({ x: 27, y: 132 });
+  });
+
+  it("floors fractional midpoints", () => {
+    expect(computeCenter({ x1: 0, y1: 0, x2: 1, y2: 1 })).toEqual({ x: 0, y: 0 });
+  });
+});
 
 // ─── parseNodes ───────────────────────────────────────────────────────────────
 

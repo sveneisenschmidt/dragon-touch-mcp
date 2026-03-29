@@ -53,24 +53,51 @@ const xmlParser = new XMLParser({
   parseAttributeValue: false,
 });
 
+/** Strips the package prefix from a full resource-id, e.g. "com.fujia.calendar:id/fl_type" → "fl_type". */
+export function toShortId(resourceId: string): string {
+  return resourceId.replace(/^[^/]+\//, "");
+}
+
+/**
+ * Parses the uiautomator bounds string "[x1,y1][x2,y2]" into numeric coordinates.
+ * Returns null when the string does not match the expected format.
+ * (Regex is appropriate here — bounds is a structured plain-text value, not XML.)
+ */
+export function parseBounds(
+  bounds: string
+): { x1: number; y1: number; x2: number; y2: number } | null {
+  const b = bounds.match(/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/);
+  if (!b) return null;
+  return { x1: +b[1], y1: +b[2], x2: +b[3], y2: +b[4] };
+}
+
+/** Computes the center pixel of a bounding box. */
+export function computeCenter(bounds: {
+  x1: number; y1: number; x2: number; y2: number;
+}): { x: number; y: number } {
+  return {
+    x: Math.floor((bounds.x1 + bounds.x2) / 2),
+    y: Math.floor((bounds.y1 + bounds.y2) / 2),
+  };
+}
+
 function flattenRawNodes(raw: RawNode[]): UiNode[] {
   const result: UiNode[] = [];
   for (const r of raw) {
-    const b = (r.bounds ?? "").match(/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/);
-    if (b) {
-      const x1 = +b[1], y1 = +b[2], x2 = +b[3], y2 = +b[4];
+    const bounds = parseBounds(r.bounds ?? "");
+    if (bounds) {
       const resourceId = r["resource-id"] ?? "";
       result.push({
         resourceId,
-        shortId: resourceId.replace(/^[^/]+\//, ""),
+        shortId: toShortId(resourceId),
         text: r.text ?? "",
         contentDesc: r["content-desc"] ?? "",
         className: r.class ?? "",
         checked: r.checked === "true",
         clickable: r.clickable === "true",
         checkable: r.checkable === "true",
-        bounds: { x1, y1, x2, y2 },
-        center: { x: Math.floor((x1 + x2) / 2), y: Math.floor((y1 + y2) / 2) },
+        bounds,
+        center: computeCenter(bounds),
       });
     }
     if (r.node) {
@@ -103,7 +130,7 @@ export function findNodes(nodes: UiNode[], shortId: string): UiNode[] {
 // Inverted index: shortId → TabName, derived from the canonical TAB_RESOURCE_IDS map.
 export const TAB_MAP: Record<string, TabName> = Object.fromEntries(
   Object.entries(TAB_RESOURCE_IDS).map(([tab, resourceId]) => [
-    resourceId.replace(/^[^/]+\//, ""),
+    toShortId(resourceId),
     tab as TabName,
   ])
 );
