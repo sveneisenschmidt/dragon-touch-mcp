@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
 import { AdbConfig, captureScreen, ensureConnected } from "./adb.js";
 import { CheckResult, formatCheckup, runCheckup, warmCache } from "./tablet.js";
 import { Trace } from "./trace.js";
@@ -12,6 +13,10 @@ import { getAppSettingsCliCommand } from "./tools/get_app_settings.js";
 import { setBrightnessCliCommand } from "./tools/set_brightness.js";
 import { setVolumeCliCommand } from "./tools/set_volume.js";
 import { getActiveTabCliCommand } from "./tools/get_active_tab.js";
+import { calendarGetScheduleCliCommand } from "./tools/calendar_get_schedule.js";
+import { calendarSetViewCliCommand } from "./tools/calendar_set_view.js";
+import { calendarNavigateCliCommand } from "./tools/calendar_navigate.js";
+import { calendarSetFilterCliCommand } from "./tools/calendar_set_filter.js";
 import { parseCliCommand, runCli } from "./cli.js";
 
 // ─── Config from env / CLI args ──────────────────────────────────────────────
@@ -80,15 +85,20 @@ const allCommands = [
   setBrightnessCliCommand,
   setVolumeCliCommand,
   getActiveTabCliCommand,
+  calendarGetScheduleCliCommand,
+  calendarSetViewCliCommand,
+  calendarNavigateCliCommand,
+  calendarSetFilterCliCommand,
 ];
 
 // ─── MCP server registration ─────────────────────────────────────────────────
 
 function registerMcpTools(server: McpServer, config: AdbConfig): void {
   for (const cmd of allCommands.filter((c) => c.name !== captureScreenCliCommand.name)) {
-    server.tool(cmd.name, cmd.description, {}, async () => {
-      const result = await cmd.run({}, config);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    const shape = cmd.schema instanceof z.ZodObject ? cmd.schema.shape : {};
+    server.tool(cmd.name, cmd.description, shape, async (args: unknown) => {
+      const result = await cmd.run(args, config);
+      return { content: [{ type: "text" as const, text: JSON.stringify(result) }] };
     });
   }
 

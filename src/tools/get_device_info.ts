@@ -47,6 +47,7 @@ export function parseDeviceInfo(raw: RawDeviceData): object {
 }
 
 async function run(_args: unknown, config: AdbConfig): Promise<unknown> {
+  try {
   const [
     brightness,
     brightnessMode,
@@ -77,16 +78,10 @@ async function run(_args: unknown, config: AdbConfig): Promise<unknown> {
       .catch(() => ""),
   ]);
 
-  return parseDeviceInfo({
-    brightness,
-    brightnessMode,
-    rotation,
-    wakefulnessOut,
-    volumeMusic,
-    volumeRing,
-    batteryOut,
-    modelOut,
-  });
+  return parseDeviceInfo({ brightness, brightnessMode, rotation, wakefulnessOut, volumeMusic, volumeRing, batteryOut, modelOut });
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 export const getDeviceInfoCliCommand: CliCommand = {

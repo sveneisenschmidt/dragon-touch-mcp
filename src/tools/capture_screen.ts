@@ -13,26 +13,21 @@ export const captureScreenCliCommand: CliCommand = {
   description: "Take a screenshot and save to a local PNG file",
   schema: captureSchema,
   run: async (args: unknown, config: AdbConfig) => {
-    const { output = "./dragon-touch-capture.png" } = args as z.infer<typeof captureSchema>;
-    const trace = new Trace();
-
-    const connected = await ensureConnected(config);
-    trace.mark("ensure_connected");
-
-    if (!connected) {
-      return {
-        success: false,
-        error: `Cannot reach device at ${config.ip}:${config.port}`,
-        trace: trace.toJSON(),
-      };
+    try {
+      const { output = "./dragon-touch-capture.png" } = args as z.infer<typeof captureSchema>;
+      const trace = new Trace();
+      const connected = await ensureConnected(config);
+      trace.mark("ensure_connected");
+      if (!connected) {
+        return { success: false, error: `Cannot reach device at ${config.ip}:${config.port}`, trace: trace.toJSON() };
+      }
+      const base64 = await captureScreen(config);
+      trace.mark("capture");
+      await writeFile(output, Buffer.from(base64, "base64"));
+      trace.mark("write_file");
+      return { success: true, path: output, trace: trace.toJSON() };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
-
-    const base64 = await captureScreen(config);
-    trace.mark("capture");
-
-    await writeFile(output, Buffer.from(base64, "base64"));
-    trace.mark("write_file");
-
-    return { success: true, path: output, trace: trace.toJSON() };
   },
 };

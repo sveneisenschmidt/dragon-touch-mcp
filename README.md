@@ -49,6 +49,10 @@ Config file location:
 | `set_volume` | Set media volume (0–15) |
 | `get_active_tab` | Return the currently active tab/view |
 | `capture_screen` | Take a screenshot of the tablet |
+| `calendar_get_schedule` | Read all visible events from the current calendar view (day, week, or month) |
+| `calendar_set_view` | Switch the calendar to day, week, month, or schedule view |
+| `calendar_navigate` | Navigate the calendar forward or backward (1–30 steps, unit = active view) |
+| `calendar_set_filter` | Show or hide family member profiles in the calendar filter |
 | `show_calendar` | Switch to Calendar tab |
 | `show_tasks` | Switch to Tasks tab |
 | `show_day` | Switch to Day tab |
