@@ -1,0 +1,11 @@
+import { z } from "zod";
+import { AdbConfig } from "../adb.js";
+import { getActiveTab } from "../tablet.js";
+import type { CliCommand } from "../cli.js";
+
+export const getActiveTabCliCommand: CliCommand = {
+  name: "get_active_tab",
+  description: "Return the currently active tab/view on the Dragon Touch tablet",
+  schema: z.object({}),
+  run: async (_args: unknown, config: AdbConfig) => getActiveTab(config),
+};

@@ -47,6 +47,7 @@ Config file location:
 | `get_app_settings` | Read app configuration from SharedPreferences (language, weather, sleep schedule, UI settings) |
 | `set_brightness` | Set screen brightness (0–255) and disable auto-brightness |
 | `set_volume` | Set media volume (0–15) |
+| `get_active_tab` | Return the currently active tab/view |
 | `capture_screen` | Take a screenshot of the tablet |
 | `show_calendar` | Switch to Calendar tab |
 | `show_tasks` | Switch to Tasks tab |

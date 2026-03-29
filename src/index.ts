@@ -11,6 +11,7 @@ import { getDeviceInfoCliCommand } from "./tools/get_device_info.js";
 import { getAppSettingsCliCommand } from "./tools/get_app_settings.js";
 import { setBrightnessCliCommand } from "./tools/set_brightness.js";
 import { setVolumeCliCommand } from "./tools/set_volume.js";
+import { getActiveTabCliCommand } from "./tools/get_active_tab.js";
 import { parseCliCommand, runCli } from "./cli.js";
 
 // ─── Config from env / CLI args ──────────────────────────────────────────────
@@ -68,18 +69,23 @@ async function validateSetup(config: AdbConfig): Promise<CheckResult> {
   return checkup;
 }
 
+// ─── Command registry ─────────────────────────────────────────────────────────
+
+const allCommands = [
+  ...tabCliCommands,
+  captureScreenCliCommand,
+  getStatusCliCommand,
+  getDeviceInfoCliCommand,
+  getAppSettingsCliCommand,
+  setBrightnessCliCommand,
+  setVolumeCliCommand,
+  getActiveTabCliCommand,
+];
+
 // ─── MCP server registration ─────────────────────────────────────────────────
 
 function registerMcpTools(server: McpServer, config: AdbConfig): void {
-  // Tab tools, get_status, get_device_info, get_app_settings, set_brightness, set_volume
-  for (const cmd of [
-    ...tabCliCommands,
-    getStatusCliCommand,
-    getDeviceInfoCliCommand,
-    getAppSettingsCliCommand,
-    setBrightnessCliCommand,
-    setVolumeCliCommand,
-  ]) {
+  for (const cmd of allCommands.filter((c) => c.name !== captureScreenCliCommand.name)) {
     server.tool(cmd.name, cmd.description, {}, async () => {
       const result = await cmd.run({}, config);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
@@ -128,15 +134,6 @@ async function main(): Promise<void> {
   const { command, payload } = parseCliCommand();
 
   if (command !== undefined) {
-    const allCommands = [
-    ...tabCliCommands,
-    captureScreenCliCommand,
-    getStatusCliCommand,
-    getDeviceInfoCliCommand,
-    getAppSettingsCliCommand,
-    setBrightnessCliCommand,
-    setVolumeCliCommand,
-  ];
     await runCli(allCommands, command, payload, config);
     return;
   }
