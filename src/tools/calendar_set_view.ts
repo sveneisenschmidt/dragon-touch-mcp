@@ -8,13 +8,13 @@ const schema = z.object({
   view: z.enum(["day", "week", "month", "schedule"]),
 });
 
-// Fixed order of view options in the fl_type dropdown (all items with shortId "title").
-// "3Tag" (shortId "range") is a premium option that may appear but is never targeted.
-const VIEW_INDEX: Record<string, number> = {
-  schedule: 0,
-  day: 1,
-  week: 2,
-  month: 3,
+// Known display labels for each view type across app locales.
+// Matched case-insensitively against the "title" nodes in the dropdown overlay.
+const VIEW_LABELS: Record<string, string[]> = {
+  schedule: ["terminübersicht", "schedule", "agenda"],
+  day:      ["tag", "day"],
+  week:     ["woche", "week"],
+  month:    ["monat", "month"],
 };
 
 async function run(args: unknown, config: AdbConfig): Promise<unknown> {
@@ -73,13 +73,13 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
     const xml3 = await dumpUiXml(config);
     const nodes3 = parseNodes(xml3);
     const titleItems = findNodes(nodes3, "title");
-
-    const targetIndex = VIEW_INDEX[view];
-    if (targetIndex === undefined || targetIndex >= titleItems.length) {
-      return { success: false, error: `View option "${view}" not found in dropdown (${titleItems.length} items)`, state };
+    const labels = VIEW_LABELS[view] ?? [];
+    const target = titleItems.find((n) => labels.includes(n.text.toLowerCase()));
+    if (!target) {
+      const found = titleItems.map((n) => n.text).join(", ");
+      return { success: false, error: `View option "${view}" not found in dropdown. Available items: ${found || "(none)"}`, state };
     }
 
-    const target = titleItems[targetIndex];
     await tap(target.center.x, target.center.y, config);
 
     return {
