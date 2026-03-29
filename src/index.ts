@@ -12,6 +12,10 @@ import { getAppSettingsCliCommand } from "./tools/get_app_settings.js";
 import { setBrightnessCliCommand } from "./tools/set_brightness.js";
 import { setVolumeCliCommand } from "./tools/set_volume.js";
 import { getActiveTabCliCommand } from "./tools/get_active_tab.js";
+import { calendarGetScheduleCliCommand } from "./tools/calendar_get_schedule.js";
+import { calendarSetViewCliCommand } from "./tools/calendar_set_view.js";
+import { calendarNavigateCliCommand } from "./tools/calendar_navigate.js";
+import { calendarSetFilterCliCommand } from "./tools/calendar_set_filter.js";
 import { parseCliCommand, runCli } from "./cli.js";
 
 // ─── Config from env / CLI args ──────────────────────────────────────────────
@@ -80,6 +84,10 @@ const allCommands = [
   setBrightnessCliCommand,
   setVolumeCliCommand,
   getActiveTabCliCommand,
+  calendarGetScheduleCliCommand,
+  calendarSetViewCliCommand,
+  calendarNavigateCliCommand,
+  calendarSetFilterCliCommand,
 ];
 
 // ─── MCP server registration ─────────────────────────────────────────────────
