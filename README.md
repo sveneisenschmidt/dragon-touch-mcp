@@ -123,7 +123,6 @@ Files are saved to `./downloads/` (git-ignored). Override the source directory:
 ```bash
 make kiosk-pull-downloads KIOSK_DOWNLOAD_DIR=/sdcard/my-downloads
 ```
-
 ### Kiosk Demo
 
 `demo/kiosk/` contains a minimal static web app that verifies the kiosk browser environment:
