@@ -8,13 +8,17 @@ const KIOSK_ACTIVITY = `${KIOSK_PACKAGE}/.MainActivity`;
 
 const schema = z.object({
   url: z.string().url().describe("URL to display in fullscreen kiosk browser"),
+  downloadDir: z.string().optional().describe("Directory on the tablet to save downloads (default: /sdcard/kiosk-downloads)"),
 });
 
 async function run(args: unknown, config: AdbConfig): Promise<unknown> {
   try {
-    const { url } = schema.parse(args);
+    const { url, downloadDir } = schema.parse(args);
     if (url.includes("'")) {
       return { success: false, error: "URL must not contain single quotes" };
+    }
+    if (downloadDir?.includes("'")) {
+      return { success: false, error: "downloadDir must not contain single quotes" };
     }
     const connected = await ensureConnected(config);
     if (!connected) {
@@ -25,8 +29,9 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
       return { success: false, error: `Kiosk browser not installed. Run: make kiosk-install` };
     }
     await adbExec(`shell am force-stop ${KIOSK_PACKAGE}`, config);
-    await adbExec(`shell am start -n ${KIOSK_ACTIVITY} --es url '${url}'`, config);
-    return { success: true, url };
+    const downloadDirArg = downloadDir ? ` --es downloadDir '${downloadDir}'` : "";
+    await adbExec(`shell am start -n ${KIOSK_ACTIVITY} --es url '${url}'${downloadDirArg}`, config);
+    return { success: true, url, downloadDir: downloadDir ?? "/sdcard/kiosk-downloads" };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
