@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dragon Touch — Kiosk Browser Test</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Kiosk Browser Test</h1>
+    <p id="timestamp"></p>
+  </header>
+
+  <main>
+    <section class="card" id="css-test">
+      <h2>CSS</h2>
+      <div class="boxes">
+        <div class="box red">Red</div>
+        <div class="box green">Green</div>
+        <div class="box blue">Blue</div>
+      </div>
+      <p class="result pending" id="css-result">Checking…</p>
+    </section>
+
+    <section class="card" id="js-test">
+      <h2>JavaScript</h2>
+      <p class="result pending" id="js-result">Checking…</p>
+    </section>
+
+    <section class="card" id="storage-test">
+      <h2>localStorage</h2>
+      <p class="result pending" id="storage-result">Checking…</p>
+    </section>
+
+    <section class="card" id="fetch-test">
+      <h2>Fetch (local file)</h2>
+      <p class="result pending" id="fetch-result">Checking…</p>
+    </section>
+  </main>
+
+  <script src="test.js"></script>
+</body>
+</html>

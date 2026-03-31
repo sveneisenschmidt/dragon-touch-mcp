@@ -82,6 +82,33 @@ apt install default-jdk gradle
 
 Set `ANDROID_HOME` and `JAVA_HOME` if they differ from the defaults (see `Makefile`).
 
+### Kiosk Makefile Targets
+
+| Target | Description |
+|---|---|
+| `make kiosk-install` | Build the APK from source and install it on the tablet |
+| `make kiosk-open` | Open the URL defined by `KIOSK_URL` in the kiosk browser |
+| `make kiosk-close` | Stop the kiosk browser |
+| `make kiosk-provision KIOSK_APP_SRC=./dist` | Copy a local web app to the tablet and open it |
+| `make kiosk-demo` | Push and open the built-in demo app (see `demo/kiosk/`) |
+
+The `kiosk-provision` target copies the contents of `KIOSK_APP_SRC` to `/sdcard/kiosk-app/` on the tablet and opens `index.html`. Override the destination with `KIOSK_APP_DEST`.
+
+### Kiosk Demo
+
+`demo/kiosk/` contains a minimal static web app that verifies the kiosk browser environment:
+
+- **CSS** — flexbox layout, colors
+- **JavaScript** — arrow functions, array methods
+- **localStorage** — read/write
+- **Local file access** — XHR fetch of a local JSON file
+
+```bash
+make kiosk-demo
+```
+
+> Note: `fetch()` is unreliable for `file://` URLs in the tablet's WebView (version 74). Use `XMLHttpRequest` instead when loading local files. Remote HTTP requests work normally.
+
 ## CLI Usage
 
 Every tool is also available as a CLI command — useful for scripting and automation without an MCP client.
