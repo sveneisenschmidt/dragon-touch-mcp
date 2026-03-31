@@ -1,7 +1,8 @@
-.PHONY: build dev inspect test clean kiosk-install kiosk-open kiosk-close kiosk-provision kiosk-demo
+.PHONY: build dev inspect test clean kiosk-install kiosk-open kiosk-close kiosk-provision kiosk-demo kiosk-list-files kiosk-screenshot kiosk-pull-downloads
 
-KIOSK_APP_SRC  ?=
-KIOSK_APP_DEST ?= /sdcard/kiosk-app
+KIOSK_APP_SRC      ?=
+KIOSK_APP_DEST     ?= /sdcard/kiosk-app
+KIOSK_DOWNLOAD_DIR ?= /sdcard/kiosk-downloads
 
 # macOS (Homebrew) defaults — override via env vars on Linux
 UNAME := $(shell uname)
@@ -42,15 +43,26 @@ kiosk-provision: build
 	@test -n "$(KIOSK_APP_SRC)" || (echo "Error: KIOSK_APP_SRC is required. Usage: make kiosk-provision KIOSK_APP_SRC=./dist" && exit 1)
 	adb -s $(DRAGON_TOUCH_IP):5555 shell rm -rf $(KIOSK_APP_DEST)
 	adb -s $(DRAGON_TOUCH_IP):5555 push $(KIOSK_APP_SRC)/. $(KIOSK_APP_DEST)
-	DRAGON_TOUCH_IP=$(DRAGON_TOUCH_IP) node dist/index.js open_url '{"url":"file://$(KIOSK_APP_DEST)/index.html"}'
+	DRAGON_TOUCH_IP=$(DRAGON_TOUCH_IP) node dist/index.js open_url '{"url":"file://$(KIOSK_APP_DEST)/index.html","downloadDir":"$(KIOSK_DOWNLOAD_DIR)"}'
 
 kiosk-demo: build
 	adb -s $(DRAGON_TOUCH_IP):5555 shell rm -rf /sdcard/kiosk-demo
 	adb -s $(DRAGON_TOUCH_IP):5555 push demo/kiosk/. /sdcard/kiosk-demo
 	DRAGON_TOUCH_IP=$(DRAGON_TOUCH_IP) node dist/index.js open_url '{"url":"file:///sdcard/kiosk-demo/index.html"}'
 
+kiosk-screenshot: build
+	DRAGON_TOUCH_IP=$(DRAGON_TOUCH_IP) node dist/index.js capture_screen '{"path":"/tmp/kiosk-screenshot.png"}' && open /tmp/kiosk-screenshot.png
+
+kiosk-pull-downloads:
+	mkdir -p downloads
+	adb -s $(DRAGON_TOUCH_IP):5555 shell mkdir -p $(KIOSK_DOWNLOAD_DIR)
+	adb -s $(DRAGON_TOUCH_IP):5555 pull $(KIOSK_DOWNLOAD_DIR)/. downloads/ || echo "No files to pull."
+
+kiosk-list-files:
+	adb -s $(DRAGON_TOUCH_IP):5555 shell ls -la $(KIOSK_APP_DEST)
+
 kiosk-open: build
-	DRAGON_TOUCH_IP=$(DRAGON_TOUCH_IP) node dist/index.js open_url '{"url":"$(KIOSK_URL)"}'
+	DRAGON_TOUCH_IP=$(DRAGON_TOUCH_IP) node dist/index.js open_url '{"url":"$(KIOSK_URL)","downloadDir":"$(KIOSK_DOWNLOAD_DIR)"}'
 
 kiosk-close: build
 	DRAGON_TOUCH_IP=$(DRAGON_TOUCH_IP) node dist/index.js close_browser

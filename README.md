@@ -40,7 +40,7 @@ Replace `192.168.178.132` with your tablet's IP address.
 | `calendar_set_view` | Switch the calendar to day, week, month, or schedule view |
 | `calendar_navigate` | Navigate the calendar forward or backward (1–30 steps, unit = active view) |
 | `calendar_set_filter` | Show or hide family member profiles in the calendar filter |
-| `open_url` | Open a URL fullscreen in the kiosk browser |
+| `open_url` | Open a URL fullscreen in the kiosk browser (optional: `downloadDir`) |
 | `close_browser` | Close the kiosk browser |
 | `show_calendar` | Switch to Calendar tab |
 | `show_tasks` | Switch to Tasks tab |
@@ -91,8 +91,38 @@ Set `ANDROID_HOME` and `JAVA_HOME` if they differ from the defaults (see `Makefi
 | `make kiosk-close` | Stop the kiosk browser |
 | `make kiosk-provision KIOSK_APP_SRC=./dist` | Copy a local web app to the tablet and open it |
 | `make kiosk-demo` | Push and open the built-in demo app (see `demo/kiosk/`) |
+| `make kiosk-screenshot` | Take a screenshot and open it locally |
+| `make kiosk-list-files` | List files in the kiosk app directory on the tablet |
+| `make kiosk-pull-downloads` | Pull downloaded files from the tablet to `./downloads/` |
 
 The `kiosk-provision` target copies the contents of `KIOSK_APP_SRC` to `/sdcard/kiosk-app/` on the tablet and opens `index.html`. Override the destination with `KIOSK_APP_DEST`.
+
+| Variable | Default | Description |
+|---|---|---|
+| `KIOSK_APP_SRC` | — | Local path to the web app directory (required for `kiosk-provision`) |
+| `KIOSK_APP_DEST` | `/sdcard/kiosk-app` | Destination directory on the tablet |
+| `KIOSK_DOWNLOAD_DIR` | `/sdcard/kiosk-downloads` | Directory on the tablet where downloads are saved |
+| `KIOSK_URL` | `https://sven.eisenschmidt.website` | URL to open with `kiosk-open` |
+
+### Foreground Behavior
+
+When the kiosk browser is open, it runs a background service that listens for screen-on events. When the tablet wakes up (e.g. after the nightly sleep timer turns the screen off), the kiosk browser automatically returns to the foreground — no interaction required.
+
+The service is started automatically when `open_url` is called and runs until `close_browser` stops the app.
+
+### Downloads
+
+The kiosk browser supports file downloads. Files are saved to `KIOSK_DOWNLOAD_DIR` on the tablet (default: `/sdcard/kiosk-downloads`). Pull them to your local machine with:
+
+```bash
+make kiosk-pull-downloads
+```
+
+Files are saved to `./downloads/` (git-ignored). Override the source directory:
+
+```bash
+make kiosk-pull-downloads KIOSK_DOWNLOAD_DIR=/sdcard/my-downloads
+```
 
 ### Kiosk Demo
 
