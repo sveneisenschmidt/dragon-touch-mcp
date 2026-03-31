@@ -1,3 +1,4 @@
+/* Copyright (c) 2025 Sven Eisenschmidt. Licensed under the MIT License. */
 document.getElementById("timestamp").textContent = new Date().toLocaleString();
 
 function pass(id, msg) {
