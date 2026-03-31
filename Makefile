@@ -35,9 +35,8 @@ kiosk-install:
 	cd android && JAVA_HOME=$(JAVA_HOME) ANDROID_HOME=$(ANDROID_HOME) gradle assembleDebug
 	adb -s $(DRAGON_TOUCH_IP):5555 install -r android/app/build/outputs/apk/debug/app-debug.apk
 
-kiosk-open:
-	adb -s $(DRAGON_TOUCH_IP):5555 shell am force-stop com.dragontouch.kioskbrowser
-	adb -s $(DRAGON_TOUCH_IP):5555 shell am start -n com.dragontouch.kioskbrowser/.MainActivity --es url "$(KIOSK_URL)"
+kiosk-open: build
+	DRAGON_TOUCH_IP=$(DRAGON_TOUCH_IP) node dist/index.js open_url '{"url":"$(KIOSK_URL)"}'
 
-kiosk-close:
-	adb -s $(DRAGON_TOUCH_IP):5555 shell am force-stop com.dragontouch.kioskbrowser
+kiosk-close: build
+	DRAGON_TOUCH_IP=$(DRAGON_TOUCH_IP) node dist/index.js close_browser
