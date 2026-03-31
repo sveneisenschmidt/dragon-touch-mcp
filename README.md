@@ -53,6 +53,8 @@ Config file location:
 | `calendar_set_view` | Switch the calendar to day, week, month, or schedule view |
 | `calendar_navigate` | Navigate the calendar forward or backward (1–30 steps, unit = active view) |
 | `calendar_set_filter` | Show or hide family member profiles in the calendar filter |
+| `open_url` | Open a URL fullscreen in the kiosk browser |
+| `close_browser` | Close the kiosk browser |
 | `show_calendar` | Switch to Calendar tab |
 | `show_tasks` | Switch to Tasks tab |
 | `show_day` | Switch to Day tab |
@@ -63,6 +65,35 @@ Config file location:
 | `show_goal` | Switch to Goal tab |
 
 Tab switching uses Android resource IDs — works regardless of screen rotation or app language.
+
+### Kiosk Browser
+
+The Dragon Touch is primarily a family calendar and home dashboard device. The kiosk browser extends this by letting you display any web app on the tablet — fullscreen, no browser chrome, no address bar. This makes it possible to build custom web UIs (e.g. a React calendar, a home automation dashboard, or a digital photo frame) and push them to the tablet via MCP tools, without replacing or interfering with the native Dragon Touch app when not in use.
+
+`open_url` opens a URL fullscreen; `close_browser` returns the tablet to whatever was running before. Both are controllable by Claude like any other tool.
+
+`open_url` and `close_browser` require the Dragon Touch Kiosk Browser APK to be installed on the tablet.
+
+> **Before building and installing:** Review the source code in `android/` yourself. The APK is built from source — no pre-built binary is distributed. Installing it modifies the tablet's running environment. **There is no guarantee the Dragon Touch will continue to function correctly afterwards**, as this interferes with the system.
+
+Build and install once you are comfortable with the source:
+
+```bash
+make kiosk-install
+```
+
+**Requirements:** Java, Gradle, and the Android SDK command line tools.
+
+```bash
+# macOS
+brew install openjdk gradle --cask android-commandlinetools
+
+# Ubuntu/Debian
+apt install default-jdk gradle
+# Android SDK: https://developer.android.com/studio#command-tools
+```
+
+Set `ANDROID_HOME` and `JAVA_HOME` if they differ from the defaults (see `Makefile`).
 
 ## CLI Usage
 

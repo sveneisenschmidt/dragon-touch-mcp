@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Sven Eisenschmidt. Licensed under the MIT License.
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Trace } from "../trace.js";
 

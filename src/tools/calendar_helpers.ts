@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Sven Eisenschmidt. Licensed under the MIT License.
 import { XMLParser } from "fast-xml-parser";
 import { TAB_RESOURCE_IDS, type TabName } from "../tablet.js";
 

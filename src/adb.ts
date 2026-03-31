@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Sven Eisenschmidt. Licensed under the MIT License.
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { tmpdir } from "node:os";

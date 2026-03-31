@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Sven Eisenschmidt. Licensed under the MIT License.
 import { z } from "zod";
 import { AdbConfig, readSharedPrefs } from "../adb.js";
 import type { CliCommand } from "../cli.js";

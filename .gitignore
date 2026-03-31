@@ -4,3 +4,12 @@ dist/
 *.d.ts.map
 .env
 .DS_Store
+TODOS.md
+
+# Android build artifacts
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.apk
+*.aab

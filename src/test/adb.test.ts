@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Sven Eisenschmidt. Licensed under the MIT License.
 import { describe, it, expect } from "vitest";
 import { findElementCenter } from "../adb.js";
 

@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Sven Eisenschmidt. Licensed under the MIT License.
 import { describe, it, expect } from "vitest";
 import { navigateSchema } from "../tools/calendar_navigate.js";
 import { setViewSchema } from "../tools/calendar_set_view.js";
