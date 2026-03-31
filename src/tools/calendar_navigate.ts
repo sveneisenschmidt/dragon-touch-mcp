@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Sven Eisenschmidt. Licensed under the MIT License.
 import { z } from "zod";
 import { AdbConfig, dumpUiXml, ensureConnected, wakeScreen, tap } from "../adb.js";
 import { switchTab } from "../tablet.js";

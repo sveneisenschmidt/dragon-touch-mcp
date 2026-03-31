@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Copyright (c) 2025 Sven Eisenschmidt. Licensed under the MIT License.
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -17,6 +18,8 @@ import { calendarGetScheduleCliCommand } from "./tools/calendar_get_schedule.js"
 import { calendarSetViewCliCommand } from "./tools/calendar_set_view.js";
 import { calendarNavigateCliCommand } from "./tools/calendar_navigate.js";
 import { calendarSetFilterCliCommand } from "./tools/calendar_set_filter.js";
+import { openUrlCliCommand } from "./tools/open_url.js";
+import { closeBrowserCliCommand } from "./tools/close_browser.js";
 import { parseCliCommand, runCli } from "./cli.js";
 
 // ─── Config from env / CLI args ──────────────────────────────────────────────
@@ -89,6 +92,8 @@ const allCommands = [
   calendarSetViewCliCommand,
   calendarNavigateCliCommand,
   calendarSetFilterCliCommand,
+  openUrlCliCommand,
+  closeBrowserCliCommand,
 ];
 
 // ─── MCP server registration ─────────────────────────────────────────────────

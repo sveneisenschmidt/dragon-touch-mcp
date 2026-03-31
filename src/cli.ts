@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Sven Eisenschmidt. Licensed under the MIT License.
 import { ZodTypeAny } from "zod";
 import { AdbConfig } from "./adb.js";
 

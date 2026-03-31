@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Sven Eisenschmidt. Licensed under the MIT License.
 export interface TraceStep {
   step: string;
   ms: number;
