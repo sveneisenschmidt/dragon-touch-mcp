@@ -1,6 +1,6 @@
 {
   "name": "dragon-touch-mcp",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "MCP server to control a Dragon Touch Android tablet over ADB via Wi-Fi",
   "type": "module",
   "bin": {
