@@ -6,11 +6,15 @@ import android.app.Activity
 import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import java.io.File
 import android.view.View
+import android.webkit.GeolocationPermissions
+import android.webkit.PermissionRequest
 import android.webkit.URLUtil
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -25,6 +29,10 @@ class MainActivity : Activity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         startService(Intent(this, KioskService::class.java))
 
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), 1)
+        }
+
         val url = intent.getStringExtra("url") ?: "about:blank"
         val downloadDir = intent.getStringExtra("downloadDir") ?: "/sdcard/kiosk-downloads"
 
@@ -36,9 +44,19 @@ class MainActivity : Activity() {
             settings.allowFileAccess = true
             settings.allowFileAccessFromFileURLs = true
             settings.allowUniversalAccessFromFileURLs = true
+            settings.mediaPlaybackRequiresUserGesture = false
+            settings.setGeolocationEnabled(true)
             settings.userAgentString = "Mozilla/5.0 (Linux; Android 10; Tablet) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = false
+            }
+            webChromeClient = object : WebChromeClient() {
+                override fun onPermissionRequest(request: PermissionRequest) {
+                    request.grant(request.resources)
+                }
+                override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback) {
+                    callback.invoke(origin, true, false)
+                }
             }
             setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
                 if (url.startsWith("blob:")) return@setDownloadListener
