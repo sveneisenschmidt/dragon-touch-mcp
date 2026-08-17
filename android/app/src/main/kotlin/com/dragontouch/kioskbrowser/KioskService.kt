@@ -9,18 +9,45 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.os.PowerManager
 
 class KioskService : Service() {
+
+    companion object {
+        private const val WATCHDOG_INTERVAL_MS = 20_000L
+    }
+
+    private val handler = Handler(Looper.getMainLooper())
+
+    // The stock calendar app (com.fujia.calendar) periodically brings itself
+    // to the foreground, hiding the kiosk browser. While this service runs,
+    // reclaim the foreground whenever MainActivity is paused and the screen
+    // is on. Stopped via close_browser (force-stop kills the service).
+    private val watchdog = object : Runnable {
+        override fun run() {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            if (!MainActivity.isInForeground && pm.isInteractive) {
+                bringToFront()
+            }
+            handler.postDelayed(this, WATCHDOG_INTERVAL_MS)
+        }
+    }
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == Intent.ACTION_SCREEN_ON) {
-                startActivity(Intent(context, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                })
+                bringToFront()
             }
         }
+    }
+
+    private fun bringToFront() {
+        startActivity(Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        })
     }
 
     override fun onCreate() {
@@ -33,9 +60,11 @@ class KioskService : Service() {
             .setSmallIcon(android.R.drawable.ic_menu_view)
             .build())
         registerReceiver(screenReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
+        handler.postDelayed(watchdog, WATCHDOG_INTERVAL_MS)
     }
 
     override fun onDestroy() {
+        handler.removeCallbacks(watchdog)
         unregisterReceiver(screenReceiver)
         super.onDestroy()
     }

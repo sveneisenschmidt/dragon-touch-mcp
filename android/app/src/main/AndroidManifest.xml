@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <!-- Exempts the app from Android 10+ background-activity-start restrictions,
+         required by the KioskService foreground watchdog. Granted via:
+         adb shell appops set com.dragontouch.kioskbrowser SYSTEM_ALERT_WINDOW allow -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <application
         android:label="Kiosk Browser"
         android:theme="@style/Theme.KioskBrowser"

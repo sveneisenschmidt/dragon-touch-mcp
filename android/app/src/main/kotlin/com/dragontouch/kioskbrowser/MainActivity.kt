@@ -22,6 +22,22 @@ import android.view.WindowManager
 
 class MainActivity : Activity() {
 
+    companion object {
+        // Read by KioskService's foreground watchdog
+        @Volatile
+        var isInForeground = false
+    }
+
+    override fun onResume() {
+        super.onResume()
+        isInForeground = true
+    }
+
+    override fun onPause() {
+        isInForeground = false
+        super.onPause()
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
