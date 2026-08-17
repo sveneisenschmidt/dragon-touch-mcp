@@ -9,6 +9,7 @@
          required by the KioskService foreground watchdog. Granted via:
          adb shell appops set com.dragontouch.kioskbrowser SYSTEM_ALERT_WINDOW allow -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <application
         android:label="Kiosk Browser"
         android:theme="@style/Theme.KioskBrowser"
@@ -27,5 +28,12 @@
             android:name=".KioskService"
             android:exported="false"
             android:foregroundServiceType="specialUse" />
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

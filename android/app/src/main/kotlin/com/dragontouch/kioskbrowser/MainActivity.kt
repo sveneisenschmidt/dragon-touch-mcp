@@ -43,14 +43,27 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        startService(Intent(this, KioskService::class.java))
+        try {
+            android.util.Log.i("KioskDebug", "MainActivity: calling startService")
+            startService(Intent(this, KioskService::class.java))
+        } catch (e: Exception) {
+            android.util.Log.e("KioskDebug", "startService failed", e)
+        }
 
         if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), 1)
         }
 
-        val url = intent.getStringExtra("url") ?: "about:blank"
-        val downloadDir = intent.getStringExtra("downloadDir") ?: "/sdcard/kiosk-downloads"
+        // Persist the last URL so relaunches without extras (watchdog reclaim,
+        // boot autostart) restore the kiosk page instead of about:blank.
+        val prefs = getSharedPreferences("kiosk", MODE_PRIVATE)
+        val url = intent.getStringExtra("url")
+            ?: prefs.getString("lastUrl", null)
+            ?: "about:blank"
+        val downloadDir = intent.getStringExtra("downloadDir")
+            ?: prefs.getString("lastDownloadDir", null)
+            ?: "/sdcard/kiosk-downloads"
+        prefs.edit().putString("lastUrl", url).putString("lastDownloadDir", downloadDir).apply()
 
         val webView = WebView(this).apply {
             settings.javaScriptEnabled = true

@@ -52,6 +52,7 @@ class KioskService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        android.util.Log.i("KioskDebug", "KioskService onCreate")
         val channelId = "kiosk"
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(NotificationChannel(channelId, "Kiosk", NotificationManager.IMPORTANCE_MIN))
