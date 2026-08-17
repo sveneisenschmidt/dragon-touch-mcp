@@ -17,7 +17,7 @@ import android.os.PowerManager
 class KioskService : Service() {
 
     companion object {
-        private const val WATCHDOG_INTERVAL_MS = 20_000L
+        private const val WATCHDOG_INTERVAL_MS = 5_000L
     }
 
     private val handler = Handler(Looper.getMainLooper())
