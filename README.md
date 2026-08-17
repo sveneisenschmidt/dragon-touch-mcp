@@ -106,9 +106,63 @@ The `kiosk-provision` target copies the contents of `KIOSK_APP_SRC` to `/sdcard/
 
 ### Foreground Behavior
 
-When the kiosk browser is open, it runs a background service that listens for screen-on events. When the tablet wakes up (e.g. after the nightly sleep timer turns the screen off), the kiosk browser automatically returns to the foreground — no interaction required.
+When the kiosk browser is open, it runs a foreground service (`KioskService`) that keeps it visible through three mechanisms:
+
+- **Screen-on**: when the tablet wakes up (e.g. after the nightly sleep timer), the kiosk browser returns to the foreground.
+- **Watchdog**: every 5 seconds the service checks whether the kiosk activity lost the foreground while the screen is on, and reclaims it. This defends against other apps bringing themselves to the front.
+- **Boot autostart**: a `BOOT_COMPLETED` receiver relaunches the kiosk after a reboot (e.g. power loss), restoring the last URL from SharedPreferences. Note: this ROM silently drops plain service starts from boot receivers, so the receiver starts the activity directly.
 
 The service is started automatically when `open_url` is called and runs until `close_browser` stops the app.
+
+Reclaiming the foreground and the boot autostart require an exemption from Android 10's background-activity-start restrictions. The kiosk browser uses the `SYSTEM_ALERT_WINDOW` app-op for this, which `make kiosk-install` grants automatically. It persists across reboots; after a factory reset or fresh install, re-grant it with:
+
+```bash
+adb shell appops set com.dragontouch.kioskbrowser SYSTEM_ALERT_WINDOW allow
+```
+
+### Stock Firmware App (com.fujia.calendar)
+
+The Dragon Touch stock calendar app (`com.fujia.calendar`, runs with system UID) aggressively takes over the tablet: after a mid-2026 firmware update it brought itself to the foreground every few minutes **and force-stopped the kiosk browser roughly every 15–20 minutes**. A force-stop kills the kiosk service and cancels its restart, so no in-app mechanism can defend against it.
+
+The stock app is therefore **disabled** on the tablet:
+
+```bash
+adb shell pm disable-user --user 0 com.fujia.calendar
+```
+
+This is a user-level setting — it does not modify the system partition and cannot brick the device.
+
+**Restoring the original firmware behavior** (stock calendar active again):
+
+```bash
+# 1. Re-enable the stock app
+adb shell pm enable com.fujia.calendar
+
+# 2. Stop the kiosk browser (also stops watchdog and boot autostart)
+adb shell am force-stop com.dragontouch.kioskbrowser
+
+# 3. Optional: uninstall the kiosk browser entirely
+adb shell pm uninstall com.dragontouch.kioskbrowser
+
+# 4. Reboot — the stock app takes over again
+adb reboot
+```
+
+A factory reset also restores everything, including the stock app.
+
+**Known ROM quirks** (pre-existing vendor bugs, unrelated to this project):
+
+- `FallbackHome` crashes at boot because the ROM references a missing `com.waophoto.fota` activity. Harmless — the boot autostart brings the kiosk up regardless.
+- The device has no resolvable HOME activity even with the stock app enabled.
+- adb over TCP is always on (`persist.adb.tcp.port=5555`, `ro.adb.secure=0`) and adbd runs as root.
+
+### Building Notes
+
+Gradle incremental builds have produced stale APKs for this project (new manifest merged with partially old code, missing services). Always build clean:
+
+```bash
+cd android && gradle clean assembleDebug
+```
 
 ### Downloads
 

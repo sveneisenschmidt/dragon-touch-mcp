@@ -36,7 +36,7 @@ kiosk-install:
 	@command -v java >/dev/null 2>&1 || (echo "Error: Java not found. Install OpenJDK (brew install openjdk / apt install default-jdk)" && exit 1)
 	@command -v gradle >/dev/null 2>&1 || (echo "Error: Gradle not found. Install Gradle (brew install gradle / apt install gradle)" && exit 1)
 	@test -d "$(ANDROID_HOME)/platforms" || (echo "Error: Android SDK not found at $(ANDROID_HOME). Set ANDROID_HOME or install Android command line tools." && exit 1)
-	cd android && JAVA_HOME=$(JAVA_HOME) ANDROID_HOME=$(ANDROID_HOME) gradle assembleDebug
+	cd android && JAVA_HOME=$(JAVA_HOME) ANDROID_HOME=$(ANDROID_HOME) gradle clean assembleDebug
 	adb -s $(DRAGON_TOUCH_IP):5555 install -r android/app/build/outputs/apk/debug/app-debug.apk
 	adb -s $(DRAGON_TOUCH_IP):5555 shell appops set com.dragontouch.kioskbrowser SYSTEM_ALERT_WINDOW allow
 
