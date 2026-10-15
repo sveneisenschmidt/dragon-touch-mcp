@@ -87,6 +87,7 @@ Set `ANDROID_HOME` and `JAVA_HOME` if they differ from the defaults (see `Makefi
 | Target | Description |
 |---|---|
 | `make kiosk-install` | Build the APK from source and install it on the tablet |
+| `make kiosk-test` | Run the kiosk browser unit tests (no device required) |
 | `make kiosk-open` | Open the URL defined by `KIOSK_URL` in the kiosk browser |
 | `make kiosk-close` | Stop the kiosk browser |
 | `make kiosk-provision KIOSK_APP_SRC=./dist` | Copy a local web app to the tablet and open it |
@@ -108,7 +109,7 @@ The `kiosk-provision` target copies the contents of `KIOSK_APP_SRC` to `/sdcard/
 
 When the kiosk browser is open, it runs a foreground service (`KioskService`) that keeps it visible through three mechanisms:
 
-- **Screen-on**: when the tablet wakes up (e.g. after the nightly sleep timer), the kiosk browser returns to the foreground.
+- **Screen-on**: when the tablet wakes up (e.g. at the wake time of the [screen schedule](#screen-schedule)), the kiosk browser returns to the foreground.
 - **Watchdog**: every 5 seconds the service checks whether the kiosk activity lost the foreground while the screen is on, and reclaims it. This defends against other apps bringing themselves to the front.
 - **Boot autostart**: a `BOOT_COMPLETED` receiver relaunches the kiosk after a reboot (e.g. power loss), restoring the last URL from SharedPreferences. Note: this ROM silently drops plain service starts from boot receivers, so the receiver starts the activity directly.
 
@@ -118,6 +119,36 @@ Reclaiming the foreground and the boot autostart require an exemption from Andro
 
 ```bash
 adb shell appops set com.dragontouch.kioskbrowser SYSTEM_ALERT_WINDOW allow
+```
+
+### Screen Schedule
+
+The kiosk browser turns the screen off at 22:00 and on at 06:00 every day. This replaces the sleep timer of the stock app, which is disabled (see [below](#stock-firmware-app-comfujiacalendar)).
+
+- **Sleep**: an alarm calls `DevicePolicyManager.lockNow()`, which turns the screen off. The lock screen is disabled on the tablet, so no lock screen shows on wake.
+- **Wake**: an alarm acquires a wake lock with `ACQUIRE_CAUSES_WAKEUP`, which turns the screen on. The kiosk browser then returns to the foreground.
+
+A reboot or a force-stop deletes the alarms. The kiosk activity schedules them again on every start, so `open_url` and the boot autostart restore them.
+
+`lockNow()` needs an active device admin. `make kiosk-install` activates it. After a factory reset or fresh install, activate it with:
+
+```bash
+adb shell dpm set-active-admin com.dragontouch.kioskbrowser/.KioskAdminReceiver
+```
+
+An active device admin blocks `pm uninstall`. The APK is marked `testOnly`, so adb can remove the admin before an uninstall (e.g. after a signature mismatch):
+
+```bash
+adb shell dpm remove-active-admin com.dragontouch.kioskbrowser/.KioskAdminReceiver
+```
+
+Android stores the `testOnly` flag when it activates the admin. An admin activated by an older APK without the flag cannot be removed this way. Deactivate it once in Settings > Security > Device admin apps, then activate it again with `dpm set-active-admin`.
+
+To change the times, start the kiosk with the `sleepAt` and `wakeAt` extras in `HH:mm` format. The kiosk browser stores them, and later starts without these extras keep them:
+
+```bash
+adb shell am force-stop com.dragontouch.kioskbrowser
+adb shell am start -n com.dragontouch.kioskbrowser/.MainActivity --es sleepAt 21:30 --es wakeAt 06:30
 ```
 
 ### Stock Firmware App (com.fujia.calendar)
@@ -141,7 +172,9 @@ adb shell pm enable com.fujia.calendar
 # 2. Stop the kiosk browser (also stops watchdog and boot autostart)
 adb shell am force-stop com.dragontouch.kioskbrowser
 
-# 3. Optional: uninstall the kiosk browser entirely
+# 3. Optional: uninstall the kiosk browser entirely.
+#    The active device admin blocks the uninstall, so remove it first.
+adb shell dpm remove-active-admin com.dragontouch.kioskbrowser/.KioskAdminReceiver
 adb shell pm uninstall com.dragontouch.kioskbrowser
 
 # 4. Reboot — the stock app takes over again
@@ -162,6 +195,12 @@ Gradle incremental builds have produced stale APKs for this project (new manifes
 
 ```bash
 cd android && gradle clean assembleDebug
+```
+
+Unit tests for the screen schedule logic run on the JVM, without a device:
+
+```bash
+make kiosk-test
 ```
 
 ### Downloads

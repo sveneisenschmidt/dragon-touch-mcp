@@ -63,7 +63,16 @@ class MainActivity : Activity() {
         val downloadDir = intent.getStringExtra("downloadDir")
             ?: prefs.getString("lastDownloadDir", null)
             ?: "/sdcard/kiosk-downloads"
-        prefs.edit().putString("lastUrl", url).putString("lastDownloadDir", downloadDir).apply()
+        // Optional "HH:mm" extras override the default screen schedule (22:00 to 06:00)
+        val sleepAt = intent.getStringExtra("sleepAt") ?: prefs.getString("sleepAt", null)
+        val wakeAt = intent.getStringExtra("wakeAt") ?: prefs.getString("wakeAt", null)
+        prefs.edit()
+            .putString("lastUrl", url)
+            .putString("lastDownloadDir", downloadDir)
+            .putString("sleepAt", sleepAt)
+            .putString("wakeAt", wakeAt)
+            .apply()
+        ScreenScheduler.schedule(this)
 
         val webView = WebView(this).apply {
             settings.javaScriptEnabled = true

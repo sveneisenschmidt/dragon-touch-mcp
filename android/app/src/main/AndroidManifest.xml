@@ -10,7 +10,11 @@
          adb shell appops set com.dragontouch.kioskbrowser SYSTEM_ALERT_WINDOW allow -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- testOnly lets adb remove the device admin again (dpm remove-active-admin).
+         An active device admin blocks uninstall. Requires adb install -t. -->
     <application
+        android:testOnly="true"
         android:label="Kiosk Browser"
         android:theme="@style/Theme.KioskBrowser"
         android:requestLegacyExternalStorage="true">
@@ -33,6 +37,27 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name=".ScreenScheduleReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+        <!-- Activated via:
+             adb shell dpm set-active-admin com.dragontouch.kioskbrowser/.KioskAdminReceiver -->
+        <receiver
+            android:name=".KioskAdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
             </intent-filter>
         </receiver>
     </application>
