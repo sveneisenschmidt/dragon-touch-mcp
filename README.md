@@ -230,6 +230,8 @@ make kiosk-demo
 ```
 
 > Note: `fetch()` is unreliable for `file://` URLs in the tablet's WebView (version 74). Use `XMLHttpRequest` instead when loading local files. Remote HTTP requests work normally.
+>
+> The manifest sets `usesCleartextTraffic`, so the WebView also loads plain `http://` URLs, such as a calendar feed or a dashboard on the LAN. Without it, Android blocks them since target SDK 28, and an XHR to one fails with a network error.
 
 ## CLI Usage
 
