@@ -13,7 +13,11 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- testOnly lets adb remove the device admin again (dpm remove-active-admin).
          An active device admin blocks uninstall. Requires adb install -t. -->
+    <!-- usesCleartextTraffic lets the WebView load plain http URLs, such as a calendar
+         feed or a dashboard on the LAN. Since targetSdk 28 Android blocks them by default,
+         and an XHR to one fails with a network error. -->
     <application
+        android:usesCleartextTraffic="true"
         android:testOnly="true"
         android:label="Kiosk Browser"
         android:theme="@style/Theme.KioskBrowser"
