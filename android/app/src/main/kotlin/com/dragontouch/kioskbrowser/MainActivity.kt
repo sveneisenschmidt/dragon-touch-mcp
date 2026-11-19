@@ -6,6 +6,7 @@ import android.app.Activity
 import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -73,6 +74,12 @@ class MainActivity : Activity() {
             .putString("wakeAt", wakeAt)
             .apply()
         ScreenScheduler.schedule(this)
+
+        // A debuggable build (assembleDebug) exposes its pages to Chrome DevTools over adb:
+        // adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>
+        if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+            WebView.setWebContentsDebuggingEnabled(true)
+        }
 
         val webView = WebView(this).apply {
             settings.javaScriptEnabled = true
