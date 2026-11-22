@@ -2,8 +2,7 @@
 import { z } from "zod";
 import { AdbConfig, adbExec, ensureConnected } from "../adb.js";
 import type { CliCommand } from "../cli.js";
-
-const KIOSK_PACKAGE = "com.dragontouch.kioskbrowser";
+import { KIOSK_PACKAGE } from "../kiosk.js";
 
 const schema = z.object({});
 

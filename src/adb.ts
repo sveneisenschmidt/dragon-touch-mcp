@@ -74,6 +74,38 @@ export async function isPackageInstalled(
   }
 }
 
+/** Extracts versionName from `dumpsys package` output, or null when the package is missing. */
+export function parseVersionName(dumpsys: string): string | null {
+  return dumpsys.match(/versionName=(\S+)/)?.[1] ?? null;
+}
+
+export async function getPackageVersion(
+  packageName: string,
+  config: AdbConfig
+): Promise<string | null> {
+  try {
+    const { stdout } = await adbExec(
+      `shell "dumpsys package ${packageName} | grep -m1 versionName="`,
+      config
+    );
+    return parseVersionName(stdout);
+  } catch {
+    return null;
+  }
+}
+
+// An APK upload over Wi-Fi takes longer than ADB_TIMEOUT_MS.
+const INSTALL_TIMEOUT_MS = 120_000;
+
+/** Installs or updates an APK. -t allows the testOnly flag that the kiosk manifest sets. */
+export async function installApk(localPath: string, config: AdbConfig): Promise<string> {
+  const device = `${config.ip}:${config.port}`;
+  const { stdout } = await execAsync(`adb -s ${device} install -r -t "${localPath}"`, {
+    timeout: INSTALL_TIMEOUT_MS,
+  });
+  return stdout.trim();
+}
+
 export async function wakeScreen(config: AdbConfig): Promise<void> {
   try {
     // Pipe on-device so only one line crosses ADB (~77ms vs streaming full dumpsys)

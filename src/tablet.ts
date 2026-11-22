@@ -8,11 +8,13 @@ import {
   findElementCenter,
   getDeviceState,
   getOrientation,
+  getPackageVersion,
   isPackageInstalled,
   tap,
   wakeScreen,
 } from "./adb.js";
 import { Trace, TraceResult } from "./trace.js";
+import { KIOSK_PACKAGE, packageVersion } from "./kiosk.js";
 
 export const TARGET_APP = "com.fujia.calendar";
 
@@ -49,7 +51,24 @@ export interface CheckResult {
   deviceIp: { ok: boolean; detail: string };
   deviceReachable: { ok: boolean; detail: string };
   appInstalled: { ok: boolean; detail: string };
+  /** The kiosk browser is optional, so this check does not change `ready`. */
+  kioskBrowser: { ok: boolean; detail: string };
   ready: boolean;
+}
+
+const INSTALL_HINT = "run: npx dragon-touch-mcp install_kiosk";
+
+export function checkKioskVersion(
+  installed: string | null,
+  expected: string
+): { ok: boolean; detail: string } {
+  if (installed === null) {
+    return { ok: false, detail: `not installed (optional), ${INSTALL_HINT}` };
+  }
+  if (installed !== expected) {
+    return { ok: false, detail: `version ${installed}, expected ${expected}, ${INSTALL_HINT}` };
+  }
+  return { ok: true, detail: `version ${installed}` };
 }
 
 export async function runCheckup(config: AdbConfig): Promise<CheckResult> {
@@ -58,6 +77,7 @@ export async function runCheckup(config: AdbConfig): Promise<CheckResult> {
     deviceIp: { ok: false, detail: "" },
     deviceReachable: { ok: false, detail: "" },
     appInstalled: { ok: false, detail: "" },
+    kioskBrowser: { ok: false, detail: "" },
     ready: false,
   };
 
@@ -104,6 +124,12 @@ export async function runCheckup(config: AdbConfig): Promise<CheckResult> {
     return result;
   }
 
+  // 5. Kiosk browser version
+  result.kioskBrowser = checkKioskVersion(
+    await getPackageVersion(KIOSK_PACKAGE, config),
+    packageVersion()
+  );
+
   result.ready = true;
   return result;
 }
@@ -118,6 +144,7 @@ export function formatCheckup(result: CheckResult): string {
     `  ${pad("device IP:")}      ${tick(result.deviceIp.ok)} ${result.deviceIp.detail}`,
     `  ${pad("device reachable:")}${tick(result.deviceReachable.ok)} ${result.deviceReachable.detail}`,
     `  ${pad("app installed:")}  ${tick(result.appInstalled.ok)} ${result.appInstalled.detail}`,
+    `  ${pad("kiosk browser:")}  ${tick(result.kioskBrowser.ok)} ${result.kioskBrowser.detail}`,
     "  " + "─".repeat(50),
     `  Status: ${result.ready ? "READY" : "NOT READY — fix the errors above before using tools"}`,
   ];

@@ -1,6 +1,6 @@
 // Copyright (c) 2025 Sven Eisenschmidt. Licensed under the MIT License.
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { formatCheckup, getActiveTab, type CheckResult } from "../tablet.js";
+import { checkKioskVersion, formatCheckup, getActiveTab, type CheckResult } from "../tablet.js";
 
 vi.mock("../adb.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../adb.js")>();
@@ -90,6 +90,7 @@ function makeResult(overrides: Partial<CheckResult> = {}): CheckResult {
     deviceIp: { ok: true, detail: "192.168.1.100:5555" },
     deviceReachable: { ok: true, detail: "online (state: device)" },
     appInstalled: { ok: true, detail: "com.fujia.calendar found" },
+    kioskBrowser: { ok: true, detail: "version 0.6.0" },
     ready: true,
     ...overrides,
   };
@@ -113,6 +114,7 @@ describe("formatCheckup", () => {
     expect(output).toContain("✓ 192.168.1.100:5555");
     expect(output).toContain("✓ online (state: device)");
     expect(output).toContain("✓ com.fujia.calendar found");
+    expect(output).toContain("✓ version 0.6.0");
   });
 
   it("shows ✗ for failing checks", () => {
@@ -126,5 +128,25 @@ describe("formatCheckup", () => {
   it("includes the header line", () => {
     const output = formatCheckup(makeResult());
     expect(output).toContain("Dragon Touch MCP — Startup Check");
+  });
+});
+
+describe("checkKioskVersion", () => {
+  it("passes when the installed version matches", () => {
+    expect(checkKioskVersion("0.6.0", "0.6.0")).toEqual({ ok: true, detail: "version 0.6.0" });
+  });
+
+  it("fails with the install command when the version differs", () => {
+    const result = checkKioskVersion("1.0", "0.6.0");
+    expect(result.ok).toBe(false);
+    expect(result.detail).toContain("version 1.0, expected 0.6.0");
+    expect(result.detail).toContain("npx dragon-touch-mcp install_kiosk");
+  });
+
+  it("fails with the install command when the APK is missing", () => {
+    const result = checkKioskVersion(null, "0.6.0");
+    expect(result.ok).toBe(false);
+    expect(result.detail).toContain("not installed");
+    expect(result.detail).toContain("npx dragon-touch-mcp install_kiosk");
   });
 });

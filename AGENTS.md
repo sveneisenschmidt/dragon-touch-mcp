@@ -18,10 +18,14 @@ src/
 │                     runCli() — validates JSON payload via Zod, prints JSON to stdout.
 ├── adb.ts            Low-level ADB abstraction. All exec() calls go here.
 │                     Functions: checkAdbAvailable, connectDevice, getDeviceState,
-│                     ensureConnected, isPackageInstalled, wakeScreen, tap,
-│                     dumpUiXml, captureScreen, findElementCenter
+│                     ensureConnected, isPackageInstalled, getPackageVersion,
+│                     installApk, wakeScreen, tap, dumpUiXml, captureScreen,
+│                     findElementCenter
+├── kiosk.ts          Kiosk browser constants, packageVersion() from package.json,
+│                     kioskApkUrl() for the APK of a GitHub release
 ├── tablet.ts         Tablet-level operations built on top of adb.ts.
-│                     Functions: runCheckup, formatCheckup, switchTab, warmCache, clearTabCache
+│                     Functions: runCheckup, checkKioskVersion, formatCheckup, switchTab,
+│                     warmCache, clearTabCache
 │                     Constants: TARGET_APP, TAB_RESOURCE_IDS
 ├── trace.ts          Per-call timing trace. Trace.mark(step) records elapsed ms.
 │                     toJSON() returns { steps, total_ms } included in every tool response.
@@ -32,8 +36,11 @@ src/
 └── tools/
     ├── get_status.ts     MCP tool + CLI command: runs checkup, returns structured JSON
     ├── tab_tools.ts      MCP tools + CLI commands: all 8 tab-switch tools via shared TAB_DEFS
-    └── capture_screen.ts MCP tool + CLI command: screenshot; CLI saves PNG to file
+    ├── capture_screen.ts MCP tool + CLI command: screenshot; CLI saves PNG to file
+    └── install_kiosk.ts  MCP tool + CLI command: installs the kiosk APK of this version
 ```
+
+The kiosk browser APK has the version of `package.json`. `.github/workflows/release.yml` builds and signs it for each `v*` tag and attaches it to the GitHub release. See `RELEASE.md`.
 
 ## Dev Workflow
 
@@ -62,7 +69,7 @@ All ADB commands go through `adb.ts`. Never call `exec("adb ...")` directly in o
 
 - **Startup** (`index.ts`): fail-fast via `process.exit(1)` with a clear message to stderr
 - **Tool handlers**: never throw — catch all errors and return `{ success: false, error: "..." }`
-- **adb.ts functions**: return `null` / `false` on failure, never throw (except `adbExec` which throws on non-zero exit)
+- **adb.ts functions**: return `null` / `false` on failure, never throw (except `adbExec` and `installApk`, which throw on non-zero exit)
 
 ### Tab Switching — How It Works
 

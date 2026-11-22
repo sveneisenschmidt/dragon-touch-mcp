@@ -2,9 +2,7 @@
 import { z } from "zod";
 import { AdbConfig, adbExec, ensureConnected, isPackageInstalled } from "../adb.js";
 import type { CliCommand } from "../cli.js";
-
-const KIOSK_PACKAGE = "com.dragontouch.kioskbrowser";
-const KIOSK_ACTIVITY = `${KIOSK_PACKAGE}/.MainActivity`;
+import { KIOSK_ACTIVITY, KIOSK_PACKAGE } from "../kiosk.js";
 
 const schema = z.object({
   url: z.string().url().describe("URL to display in fullscreen kiosk browser"),
@@ -26,7 +24,7 @@ async function run(args: unknown, config: AdbConfig): Promise<unknown> {
     }
     const installed = await isPackageInstalled(KIOSK_PACKAGE, config);
     if (!installed) {
-      return { success: false, error: `Kiosk browser not installed. Run: make kiosk-install` };
+      return { success: false, error: `Kiosk browser not installed. Run: npx dragon-touch-mcp install_kiosk` };
     }
     await adbExec(`shell am force-stop ${KIOSK_PACKAGE}`, config);
     const downloadDirArg = downloadDir ? ` --es downloadDir '${downloadDir}'` : "";
