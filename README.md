@@ -29,7 +29,7 @@ Replace `192.168.178.132` with your tablet's IP address.
 
 | Tool | Description |
 |---|---|
-| `get_status` | Check adb, device connectivity, and app installation |
+| `get_status` | Check adb, device connectivity, app installation, and the kiosk browser version |
 | `get_device_info` | Read screen state (brightness, rotation, awake), audio volumes, battery, and device model |
 | `get_app_settings` | Read app configuration from SharedPreferences (language, weather, sleep schedule, UI settings) |
 | `set_brightness` | Set screen brightness (0–255) and disable auto-brightness |
@@ -42,6 +42,7 @@ Replace `192.168.178.132` with your tablet's IP address.
 | `calendar_set_filter` | Show or hide family member profiles in the calendar filter |
 | `open_url` | Open a URL fullscreen in the kiosk browser (optional: `downloadDir`) |
 | `close_browser` | Close the kiosk browser |
+| `install_kiosk` | Install or update the kiosk browser APK of this version (optional: `apkPath`) |
 | `show_calendar` | Switch to Calendar tab |
 | `show_tasks` | Switch to Tasks tab |
 | `show_day` | Switch to Day tab |
@@ -61,15 +62,32 @@ The Dragon Touch is primarily a family calendar and home dashboard device. The k
 
 `open_url` and `close_browser` require the Dragon Touch Kiosk Browser APK to be installed on the tablet.
 
-> **Before building and installing:** Review the source code in `android/` yourself. The APK is built from source — no pre-built binary is distributed. Installing it modifies the tablet's running environment. **There is no guarantee the Dragon Touch will continue to function correctly afterwards**, as this interferes with the system.
+> **Before installing:** Review the source code in `android/` yourself. Installing the APK modifies the tablet's running environment. **There is no guarantee the Dragon Touch will continue to function correctly afterwards**, as this interferes with the system.
 
-Build and install once you are comfortable with the source:
+Install or update the kiosk browser with the command that ships in the npm package:
+
+```bash
+DRAGON_TOUCH_IP=192.168.178.132 npx dragon-touch-mcp install_kiosk
+```
+
+The command downloads the signed APK of the same version from the [GitHub release](https://github.com/sveneisenschmidt/dragon-touch-mcp/releases), installs it, grants the `SYSTEM_ALERT_WINDOW` app-op and activates the device admin. A kiosk browser that was running before the update starts again with its last URL. The release workflow builds the APK from the tagged source.
+
+`get_status` compares the installed kiosk browser with the version of the MCP server. After each npm update, run `install_kiosk` again when `get_status` reports a different version.
+
+An APK from `make kiosk-install` is signed with the local debug key, the release APK with the release key. Android rejects an update across the two keys with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`. To change from one to the other, uninstall the kiosk browser first:
+
+```bash
+adb shell dpm remove-active-admin com.dragontouch.kioskbrowser/.KioskAdminReceiver
+adb uninstall com.dragontouch.kioskbrowser
+```
+
+To build and install from source instead:
 
 ```bash
 make kiosk-install
 ```
 
-**Requirements:** Java, Gradle, and the Android SDK command line tools.
+**Requirements for a build from source:** Java, Gradle, and the Android SDK command line tools.
 
 ```bash
 # macOS
@@ -115,7 +133,7 @@ When the kiosk browser is open, it runs a foreground service (`KioskService`) th
 
 The service is started automatically when `open_url` is called and runs until `close_browser` stops the app.
 
-Reclaiming the foreground and the boot autostart require an exemption from Android 10's background-activity-start restrictions. The kiosk browser uses the `SYSTEM_ALERT_WINDOW` app-op for this, which `make kiosk-install` grants automatically. It persists across reboots; after a factory reset or fresh install, re-grant it with:
+Reclaiming the foreground and the boot autostart require an exemption from Android 10's background-activity-start restrictions. The kiosk browser uses the `SYSTEM_ALERT_WINDOW` app-op for this, which `install_kiosk` and `make kiosk-install` grant automatically. It persists across reboots; after a factory reset or fresh install, re-grant it with:
 
 ```bash
 adb shell appops set com.dragontouch.kioskbrowser SYSTEM_ALERT_WINDOW allow
@@ -130,7 +148,7 @@ The kiosk browser turns the screen off at 22:00 and on at 06:00 every day. This 
 
 A reboot or a force-stop deletes the alarms. The kiosk activity schedules them again on every start, so `open_url` and the boot autostart restore them.
 
-`lockNow()` needs an active device admin. `make kiosk-install` activates it. After a factory reset or fresh install, activate it with:
+`lockNow()` needs an active device admin. `install_kiosk` and `make kiosk-install` activate it. After a factory reset or fresh install, activate it with:
 
 ```bash
 adb shell dpm set-active-admin com.dragontouch.kioskbrowser/.KioskAdminReceiver

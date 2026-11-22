@@ -20,6 +20,8 @@ import { calendarNavigateCliCommand } from "./tools/calendar_navigate.js";
 import { calendarSetFilterCliCommand } from "./tools/calendar_set_filter.js";
 import { openUrlCliCommand } from "./tools/open_url.js";
 import { closeBrowserCliCommand } from "./tools/close_browser.js";
+import { installKioskCliCommand } from "./tools/install_kiosk.js";
+import { packageVersion } from "./kiosk.js";
 import { parseCliCommand, runCli } from "./cli.js";
 
 // ─── Config from env / CLI args ──────────────────────────────────────────────
@@ -94,6 +96,7 @@ const allCommands = [
   calendarSetFilterCliCommand,
   openUrlCliCommand,
   closeBrowserCliCommand,
+  installKioskCliCommand,
 ];
 
 // ─── MCP server registration ─────────────────────────────────────────────────
@@ -162,7 +165,7 @@ async function main(): Promise<void> {
 
   const server = new McpServer({
     name: "dragon-touch-mcp",
-    version: "0.1.0",
+    version: packageVersion(),
   });
 
   registerMcpTools(server, config);
